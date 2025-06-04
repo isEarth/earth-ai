@@ -31,8 +31,8 @@ python Dataset.py --src /home/eunhyea/EARTH/ConceptMap/topic/download_folder/ --
 python train.py
 ```
 학습 및 best model 저장, 성능평가 지표 저장  
-| ![image 1](https://github.com/user-attachments/assets/0adb3fba-585b-4932-92ee-6ba61dab98a6) | ![image 2](https://github.com/user-attachments/assets/17c87b4f-bafa-4fd0-9506-ecd11935c501) |
-|---|---|
+| ![image 1](https://github.com/user-attachments/assets/0adb3fba-585b-4932-92ee-6ba61dab98a6) | ![image 2](https://github.com/user-attachments/assets/17c87b4f-bafa-4fd0-9506-ecd11935c501) | ![image](https://github.com/user-attachments/assets/1afbb57e-1131-4939-a99f-aba043dd1e13)|
+|---|---|---|
 
 ## 4.1. evaluation.py
 학습 중단 시 마지막 checkpoint 찾아서 성능평가 지표 저장
