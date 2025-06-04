@@ -1,3 +1,6 @@
+[Kakaobank KF-DeBERTa-Base](https://huggingface.co/kakaobank/kf-deberta-base) 모델을 인과관계 문장 분류 Task를 위해 파인튜닝함.<br>
+<br><br>
+
 # 1. data
 
 | **youtube 스크립트 스크래핑 데이터**                                                                                                                        | **모두의 말뭉치 의미역분석 말뭉치**                                |
@@ -30,6 +33,8 @@ python Dataset.py --src /home/eunhyea/EARTH/ConceptMap/topic/download_folder/ --
 ```bash
 python train.py
 ```
+
+
 학습 및 best model 저장, 성능평가 지표 저장  
 | ![image 1](https://github.com/user-attachments/assets/0adb3fba-585b-4932-92ee-6ba61dab98a6) | ![image 2](https://github.com/user-attachments/assets/17c87b4f-bafa-4fd0-9506-ecd11935c501) | ![image](https://github.com/user-attachments/assets/1afbb57e-1131-4939-a99f-aba043dd1e13)|
 |---|---|---|
