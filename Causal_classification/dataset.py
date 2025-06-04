@@ -1,7 +1,7 @@
-# Dataset.py
+# dataset.py
 # 사용 예시:
-#   python Dataset.py --src raw_texts_dir/ --dst train.csv
-#   python Dataset.py --src /home/eunhyea/EARTH/ConceptMap/topic/download_folder/ --dst train.csv
+#   python dataset.py --src raw_texts_dir/ --dst train.csv
+#   python dataset.py --src /home/eunhyea/EARTH/ConceptMap/topic/download_folder/ --dst train.csv
 
 import re
 import csv
