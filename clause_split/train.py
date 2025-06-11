@@ -3,17 +3,39 @@
 # - 문장을 토큰 단위로 분류 (BIO 또는 절 경계 태그 등)
 # - HuggingFace Transformers + Accelerate + PyTorch 기반
 # ===========================================================
-
-from transformers import DebertaV2ForTokenClassification, AutoTokenizer, DebertaV2Model
-import torch
-import torch.nn as nn
-from torch.utils.data import DataLoader
-from accelerate import Accelerator
+import os
+import json
+import random
+from datetime import datetime
+import numpy as np
 import pandas as pd
-from sklearn.model_selection import train_test_split
 from tqdm import tqdm
 import gc
 from dataclasses import dataclass, field
+
+import matplotlib.pyplot as plt
+from sklearn.metrics import accuracy_score, precision_recall_fscore_support
+from sklearn.model_selection import train_test_split
+
+import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader
+from transformers import DebertaV2ForTokenClassification, AutoTokenizer, DebertaV2Model
+from accelerate import Accelerator
+
+# ——————————————————————————————————————————————————————
+def set_seed(seed):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+
+set_seed(42)
+
+# plt 한글처리
+plt.rcParams['font.family'] ='NanumGothic'
+plt.rcParams['axes.unicode_minus'] =False
 
 # ------------------------------
 # Config 클래스: 학습 설정 저장
@@ -24,7 +46,7 @@ class Config:
     dropout: float = 0.5
     max_length: int = 128
     batch_size: int = 1
-    epochs: int = 50
+    epochs: int = 100
     lr: float = 3e-4
     enable_scheduler: bool = True
     scheduler: str = 'CosineAnnealingWarmRestarts'
@@ -192,6 +214,10 @@ class Trainer:
         self.optimizer = self._get_optimizer()
         self.scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(self.optimizer, T_0=5, eta_min=1e-7)
         self.train_losses, self.val_losses = [], []
+        self.train_metrics = []  
+        self.val_metrics = []    
+        self.best_epoch = None
+
         Variables().confidence_avg = self.confidence_avg
 
     def _get_optimizer(self):
@@ -217,6 +243,7 @@ class Trainer:
     def train_one_epoch(self, epoch):
         self.model.train()
         running_loss = 0
+        all_preds, all_labels = [], [] 
         for step, inputs in enumerate(tqdm(self.train_loader, desc=f"Train Epoch {epoch}")):
             subset = {k: inputs[k] for k in ['input_ids', 'attention_mask'] if k in inputs}
             with self.accelerator.accumulate(self.model):
@@ -228,35 +255,130 @@ class Trainer:
                     self.scheduler.step(epoch - 1 + step / len(self.train_loader))
                 self.optimizer.zero_grad()
                 running_loss += loss.item()
+            
+            preds = torch.argmax(outputs, dim=-1)
+            labels = inputs['labels']
+            mask = labels != -100  # -100인 토큰은 무시
+            all_preds.extend(preds[mask].detach().cpu().tolist())
+            all_labels.extend(labels[mask].detach().cpu().tolist())
+
+        # 평균 손실 계산
         self.train_losses.append(running_loss / len(self.train_loader))
+
+        # 정확도, 정밀도, 재현율, F1 스코어 계산
+        acc = accuracy_score(all_labels, all_preds)
+        precision, recall, f1, _ = precision_recall_fscore_support(
+            all_labels, all_preds, average='weighted', zero_division=0
+        )
+        self.train_metrics.append({
+            'accuracy': acc,
+            'precision': precision,
+            'recall': recall,
+            'f1': f1
+        })
 
     @torch.no_grad()
     def valid_one_epoch(self, epoch):
         self.model.eval()
         running_loss = 0
+        all_preds, all_labels = [], []
+
         for inputs in tqdm(self.val_loader, desc=f"Valid Epoch {epoch}"):
             subset = {k: inputs[k] for k in ['input_ids', 'attention_mask'] if k in inputs}
             outputs = self.model(subset)
             loss = self.loss_fn(outputs, inputs['labels'])
             running_loss += loss.item()
+
+            # 분류 지표를 위한 예측값/정답 수집
+            preds = torch.argmax(outputs, dim=-1)
+            labels = inputs['labels']
+            mask = labels != -100
+            all_preds.extend(preds[mask].detach().cpu().tolist())
+            all_labels.extend(labels[mask].detach().cpu().tolist())
+
         self.val_losses.append(running_loss / len(self.val_loader))
+        # 정확도, 정밀도, 재현율, F1 스코어 계산
+        acc = accuracy_score(all_labels, all_preds)
+        precision, recall, f1, _ = precision_recall_fscore_support(
+            all_labels, all_preds, average='weighted', zero_division=0
+        )
+        self.val_metrics.append({
+            'accuracy': acc,
+            'precision': precision,
+            'recall': recall,
+            'f1': f1
+        })
 
         # 첫 에폭에서 confidence 평균 계산
         if epoch == 1:
             self.confidence_avg = sum([float(max(outputs[0][m])) for m in range(inputs['attention_mask'].sum().item())]) / inputs['attention_mask'].sum().item()
 
-    def fit(self):
+    def fit(self, output_dir: str):
         self.prepare()
         best_val_loss = float('inf')
         for epoch in range(1, self.config.epochs + 1):
             self.train_one_epoch(epoch)
             self.valid_one_epoch(epoch)
-            print(f"Epoch {epoch} | Train Loss: {self.train_losses[-1]:.4f} | Val Loss: {self.val_losses[-1]:.4f}")
+            print(f"Epoch {epoch} | Train Loss: {self.train_losses[-1]:.4f} | Val Loss: {self.val_losses[-1]:.4f} | Accuracy: {self.val_metrics[-1]}")
             if self.val_losses[-1] < best_val_loss:
                 best_val_loss = self.val_losses[-1]
-                self.accelerator.save(self.model.state_dict(), "clause_model_earth.pt")
+                self.best_epoch = epoch
+                self.accelerator.save(self.model.state_dict(), f"{output_dir}/clause_model_earth.pt")
             gc.collect()
             torch.cuda.empty_cache()
+    
+    def save_metrics(self, output_dir: str):
+            """
+            훈련 및 검증 손실과 분류 지표를 metrics.json으로 저장합니다.
+            """
+            os.makedirs(output_dir, exist_ok=True)
+            metrics = {
+                'best_epoch': self.best_epoch,
+                'train_losses': self.train_losses,
+                'val_losses': self.val_losses,
+                'train_metrics': self.train_metrics,
+                'val_metrics': self.val_metrics
+            }
+            with open(os.path.join(output_dir, 'metrics.json'), 'w', encoding='utf-8') as f:
+                json.dump(metrics, f, ensure_ascii=False, indent=4)
+            print(f"Metrics saved to {os.path.join(output_dir, 'metrics.json')}")
+    
+    def plot_metrics(trainer, save_dir):
+        """
+        Trainer 인스턴스가 가지고 있는 train/val 손실과 분류 지표를
+        에폭별로 그래프로 저장합니다.
+        """
+        os.makedirs(save_dir, exist_ok=True)  # 저장 폴더가 없으면 생성
+
+        # 1) 손실(loss) 그리기
+        plt.figure()
+        # train_losses와 val_losses는 리스트이므로 그대로 사용
+        plt.plot(trainer.train_losses, label='train_loss')
+        plt.plot(trainer.val_losses,   label='val_loss')
+        plt.title('Loss over Epochs')
+        plt.xlabel('Epoch')
+        plt.ylabel('Loss')
+        plt.legend()
+        plt.savefig(os.path.join(save_dir, 'loss.png'))
+        plt.close()
+
+        # 2) 분류 지표(accuracy, precision, recall, f1) 그리기
+        # trainer.train_metrics, trainer.val_metrics는 [{...}, {...}, …] 꼴이므로
+        # metric별로 리스트를 뽑아낸 후 그립니다.
+        for metric in ['accuracy', 'precision', 'recall', 'f1']:
+            plt.figure()
+            # 각 epoch마다 저장된 metric 값을 리스트로 추출
+            train_vals = [m[metric] for m in trainer.train_metrics]
+            val_vals   = [m[metric] for m in trainer.val_metrics]
+            plt.plot(train_vals, label=f'train_{metric}')
+            plt.plot(val_vals,   label=f'val_{metric}')
+            plt.title(f'{metric.capitalize()} over Epochs')
+            plt.xlabel('Epoch')
+            plt.ylabel(metric.capitalize())
+            plt.legend()
+            plt.savefig(os.path.join(save_dir, f'{metric}.png'))
+            plt.close()
+
 
 # ------------------------------
 # 실행 함수
@@ -288,7 +410,14 @@ def main():
     accelerator = Accelerator(gradient_accumulation_steps=config.gradient_accumulation_steps)
     model = TaggingModel(config)
     trainer = Trainer(model, (train_loader, val_loader), config, accelerator)
-    trainer.fit()
+    
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    save_dir = f'save/{timestamp}'
+    os.makedirs(save_dir, exist_ok=True)
+    
+    trainer.fit(save_dir)
+    trainer.save_metrics(save_dir)
+    trainer.plot_metrics(save_dir)
 
 if __name__ == "__main__":
     main()
