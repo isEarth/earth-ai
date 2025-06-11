@@ -367,7 +367,7 @@ class ClauseSpliting:
                     timeset = []
                 real.append(token.form)
         return real
-    
+
     def summary(self, max_sentence: int = 5):
         """
         분리된 절과 해당 강조 단어, [CLS] 임베딩 벡터 정보를 요약 출력하는 함수
@@ -417,6 +417,6 @@ def main():
 
     cs = ClauseSpliting(sentences, config= config, e_option= 'E3', threshold= True)
     cs.summary()
-    
+
 if __name__ == "__main__":
     main()
