@@ -1061,7 +1061,7 @@ def main():
     config = Config()
     config.confidence_threshold = 0.15 # 구문 분리 기준, 높을 수록 많이 잘림림
     config.important_words_ratio = 0.5 # 중요 키워드 기준, 높을 수록 많이 탐지
-    config.clause_len_threshold = 3    # 구문 길이 제한, 어절 단위 
+    config.clause_len_threshold = 3    # 구문 길이 제한, 어절 단위. 
 
     dir_ = "../data/youtube/"
     file = "../data/youtube_filtered.json"
