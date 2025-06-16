@@ -1,4 +1,4 @@
-# LDA Topic Modeling: 경제 뉴스 기반 이벤트 노드 생성<br>
+# LDA Topic Modeling: 경제 뉴스 기반 이벤트 노드 생성
 ## 프로젝트 개요
 YouTube 경제 뉴스 스크립트를 기반으로, LDA(Latent Dirichlet Allocation)를 활용한 토픽 모델링을 수행하였습니다.  
 각 뉴스 스크립트 내 단어 빈도 기반으로 토픽을 추출하고, 스크립트와 토픽 간 확률을 계산하여 **스크립트별 주요 토픽을 기반으로 이벤트 노드**를 생성하였습니다.
