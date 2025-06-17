@@ -39,10 +39,12 @@
 | Task               | Tool/Library                |
 |--------------------|-----------------------------|
 | Transformer 모델   | HuggingFace Transformers    |
-| 임베딩            | KoBERT / KF-DeBERTa         |
-| 토큰화            | `AutoTokenizer`, `Kiwi`     |
-| 유사도 계산       | PyTorch `cosine_similarity` |
-| 빠른 탐색         | FAISS / ScaNN (선택 가능)  |
+| 임베딩            |   KF-DeBERTa           |
+| Classifer         | custom TaggingModel   |
+| 토큰화            | `DebertaV2Tokenizer`, `Kiwi`  |
+| data 관리        | custom `ClauseDB class`     |
+| 유사도 계산       | `cosine_similarity`, `TF-TDF`, `KMean`  |
+| 빠른 탐색         | 차원 축소 선탐색 후 정밀탐색  |
 | 시각화/진행상황    | `tqdm`, `matplotlib`         |
 
 ---
