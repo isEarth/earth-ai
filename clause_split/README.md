@@ -34,7 +34,7 @@
 <img src="images/image-3.png" width="500"/> 
 </p>
 
----
+<br>
 <div style="display: flex; align-items: flex-start; justify-content: space-between;">
 
 <!-- 왼쪽: 표 두 개 묶음 -->
@@ -79,23 +79,6 @@
 </table>
 
 </div>
-## 주요 기술 스택
-
-| Task               | Tool/Library                |
-|--------------------|-----------------------------|
-| Transformer 모델   | HuggingFace Transformers    |
-| 임베딩            |   `KF-DeBERTa`           |
-| Classifer         | custom `TaggingModel`   |
-| 토큰화            | `DebertaV2Tokenizer`, `Kiwi`  |                
-| data 관리        | custom `ClauseDB`     |                                   
-| Parameter 관리    | `dataclass` 및 `config` |                               
-| 유사도 계산       | `cosine_similarity`, `TF-TDF`, `KMean`  |
-| 빠른 탐색         | 차원 축소 선탐색 후 정밀탐색  |
-| 시각화/진행상황    | `tqdm`, `matplotlib`         |
-<div style="margin-left: 30px;">
-  <img src="images/image-1.png" width="300"/>
-</div>
----
 
 ## 실행 방법
 1. 환경 설정
