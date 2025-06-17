@@ -28,7 +28,7 @@
 | 손실 함수 구성 | 재구성 손실 (link reconstruction loss) | 재구성 손실 + 관계 분류 손실 (cross-entropy) |
 | 라벨 필요성 | 라벨 없이 구조만으로 학습 가능 | 일부 라벨을 학습에 활용 |
 
-![alt text](flow-1.png)
+![alt text](flow.png)
 
 ---
 
