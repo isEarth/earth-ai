@@ -28,14 +28,14 @@
 | 손실 함수 구성 | 재구성 손실 (link reconstruction loss) | 재구성 손실 + 관계 분류 손실 (cross-entropy) |
 | 라벨 필요성 | 라벨 없이 구조만으로 학습 가능 | 일부 라벨을 학습에 활용 |
 
-![alt text](flow.png)
+![alt text](images/flow.png)
 
 
 ## 모델 성능
 <p align="center">
-  <img src="loss_plot.png" width="300"/>
-  <img src="link_performance.png" width="300"/>
-  <img src="type_performance.png" width="300"/>
+  <img src="images/loss_plot.png" width="300"/>
+  <img src="images/link_performance.png" width="300"/>
+  <img src="images/type_performance.png" width="300"/>
 </p>
 
 ## 실행 방법
@@ -71,8 +71,8 @@ RVGAE/data/
 ## 프로젝트 구조
 ```
 RVGAE/
-├── data/                # Input 데이터
-├── model.py             # R-VGAE 모델 정의
-├── predict.py           # 링크 및 타입 예측 실행
-└── requirements.txt     # 환경 설정
+├── images/                # Input 데이터
+├── model.py               # R-VGAE 모델 정의
+├── predict.py             # 링크 및 타입 예측 실행
+└── requirements.txt       # 환경 설정
 ```
