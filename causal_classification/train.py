@@ -1,3 +1,21 @@
+"""
+causal_train.py
+
+이 스크립트는 한국어 인과관계 문장 분류를 위한 DeBERTa 기반 텍스트 분류 모델을 학습합니다.
+
+- 입력: CSV 파일 (./data/*.csv) - sentence, label
+- 처리: 토큰화, 데이터 분할, 모델 학습, 평가지표 시각화
+- 출력:
+    - ./runs/run_YYYYMMDD_HHMMSS 디렉토리 내부에 모델 및 시각화 결과 저장
+
+학습 대상:
+    0: 비인과 문장
+    1: 인과 문장
+
+사용 모델:
+    kakaobank/kf-deberta-base
+"""
+
 import os
 import glob
 import random
@@ -16,6 +34,12 @@ from datetime import datetime
 
 # ——————————————————————————————————————————————————————
 def set_seed(seed):
+    """
+    재현성을 위한 랜덤 시드 고정 함수
+
+    Args:
+        seed (int): 시드 값
+    """
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -53,8 +77,13 @@ model.to(device)
 # ——————————————————————————————————————————————————————
 def compute_metrics(pred):
     """
-    Trainer가 검증할 때 사용하는 함수로, 
-    logits와 실제 레이블을 비교해 accuracy, precision, recall, f1 리턴
+    Trainer 검증 단계에서 평가 지표 계산
+
+    Args:
+        pred (EvalPrediction): 예측 결과 객체
+
+    Returns:
+        dict: accuracy, precision, recall, f1, roc_auc
     """
     logits, labels = pred.predictions, pred.label_ids
     preds = np.argmax(logits, axis=-1)
@@ -66,7 +95,15 @@ def compute_metrics(pred):
 # ——————————————————————————————————————————————————————
 def load_and_split_csv(directory, test_size=0.2, seed=42):
     """
-    지정된 디렉토리에서 가장 마지막 수정된 CSV 파일을 읽어와 HF Dataset으로 반환
+    가장 최신 CSV 파일을 로드하고 train/val 데이터셋으로 분리
+
+    Args:
+        directory (str): CSV 파일이 있는 디렉토리 경로
+        test_size (float): 검증 데이터 비율
+        seed (int): 랜덤 시드
+
+    Returns:
+        tuple: (train_ds, val_ds) 형태의 Hugging Face Dataset 객체
     """
     csv_files = glob.glob(os.path.join(directory, '*.csv'))
     if not csv_files:
@@ -89,9 +126,13 @@ def load_and_split_csv(directory, test_size=0.2, seed=42):
 # ——————————————————————————————————————————————————————
 def tokenize_fn(batch):
     """
-    Hugging Face Dataset.map()에 넘기는 토크나이저 함수.
-    batch["sentence"] 리스트를 한 번에 토크나이즈해서 
-    'input_ids', 'attention_mask' 등을 반환
+    Dataset.map()에 넘기는 토크나이저 함수
+
+    Args:
+        batch (dict): {"sentence": List[str]}
+
+    Returns:
+        dict: tokenized inputs (input_ids, attention_mask)
     """
     return tokenizer(
         batch["sentence"],
@@ -103,6 +144,13 @@ def tokenize_fn(batch):
 
 # ——————————————————————————————————————————————————————
 def plot_metrics(metrics, save_dir):
+    """
+    학습 로그(metric) 시각화
+
+    Args:
+        metrics (dict): metric 로그 딕셔너리
+        save_dir (str): 저장 디렉토리 경로
+    """
     for metric in ["loss", "eval_loss", "eval_accuracy", "eval_precision", "eval_recall", "eval_f1", "eval_roc_auc"]:
         if metric in metrics:
             plt.figure()
@@ -117,6 +165,14 @@ def plot_metrics(metrics, save_dir):
 
 # ——————————————————————————————————————————————————————
 def plot_confusion(predictions, labels, save_dir):
+    """
+    혼동행렬 시각화 및 저장
+
+    Args:
+        predictions (List[int]): 예측 레이블
+        labels (List[int]): 실제 레이블
+        save_dir (str): 저장 디렉토리
+    """
     cm = confusion_matrix(labels, predictions)
     disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=['비인과', '인과'])
     fig, ax = plt.subplots(figsize=(6, 6))
@@ -128,6 +184,14 @@ def plot_confusion(predictions, labels, save_dir):
 
 # ——————————————————————————————————————————————————————
 def plot_roc_auc(labels, probs, save_dir):
+    """
+    ROC 곡선 시각화 및 저장
+
+    Args:
+        labels (List[int]): 실제 레이블
+        probs (List[float]): 양성 클래스 확률
+        save_dir (str): 저장 디렉토리
+    """
     fpr, tpr, _ = roc_curve(labels, probs)
     auc_score = roc_auc_score(labels, probs)
     plt.figure()
@@ -143,7 +207,13 @@ def plot_roc_auc(labels, probs, save_dir):
 
 # ——————————————————————————————————————————————————————
 def main():
-
+    """
+    전체 학습 파이프라인 실행:
+        1. CSV 로드 및 데이터셋 분리
+        2. 토큰화
+        3. Trainer 설정 및 학습
+        4. 모델 저장 및 시각화 결과 저장
+    """
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     save_dir = f"./runs/run_{timestamp}"
     os.makedirs(save_dir, exist_ok=True)

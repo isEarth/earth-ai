@@ -1,7 +1,20 @@
-# dataset.py
-# 사용 예시:
-#   python dataset.py --src raw_texts_dir/ --dst train.csv
-#   python dataset.py --src /home/eunhyea/EARTH/ConceptMap/topic/download_folder/ --dst train.csv
+"""
+dataset.py
+
+텍스트 파일(.txt)들을 문장 단위로 분리하고, 정규표현식 기반 인과관계 여부를 자동 라벨링하여
+CSV 형태로 변환해주는 데이터 전처리 스크립트입니다.
+
+사용 예시:
+    python dataset.py --src raw_texts_dir/ --dst train
+    python dataset.py --src /path/to/texts/ --dst output/train_data
+
+입력:
+    - src 디렉토리 내부의 .txt 파일들 (각 파일은 2번째 줄부터 본문 시작)
+
+출력:
+    - `--dst_YYYYMMDD_HHMMSS.csv` 형식의 CSV 파일 생성
+    - 각 문장은 `sentence,label` 형식으로 저장
+"""
 
 import re
 import csv
@@ -21,7 +34,13 @@ kiwi = Kiwi()
 
 def has_causal_phrase(sentence: str) -> bool:
     """
-    문장에 인과 관계 패턴(정규식)이 하나라도 있으면 True 반환
+    주어진 문장 내에 인과 관계 패턴(정규식)이 존재하는지 판단합니다.
+
+    Args:
+        sentence (str): 검사할 문장 (한글)
+
+    Returns:
+        bool: 인과 관계 패턴이 하나라도 매칭되면 True, 없으면 False
     """
     tok = kiwi.tokenize(sentence, compatible_jamo=True)
     tok_sen = ' '.join([i.form for i in tok])
@@ -30,15 +49,20 @@ def has_causal_phrase(sentence: str) -> bool:
 # -------------------------------------------------------------------
 def build_csv(src_dir: str, dst_csv: str):
     """
-    src_dir: 원본 .txt 파일들이 모여 있는 디렉토리 경로
-    dst_csv: 'sentence,label' 형식으로 저장할 CSV 파일 경로
+    디렉토리 내 모든 .txt 파일에서 문장을 추출하고, 인과 여부 라벨링 후 CSV로 저장합니다.
 
-    동작 순서:
-      1) src_dir 내부의 모든 .txt 파일을 찾아서 내용을 읽어들임
-      2) 각 파일의 텍스트를 하나의 큰 문자열로 합침
-      3) kss.split_sentences(...)로 문장 단위 분리 → 리스트
-      4) 각 문장마다 has_causal_phrase(...)로 라벨(0/1) 결정
-      5) 결과를 CSV로 저장 (헤더: sentence,label)
+    Args:
+        src_dir (str): 입력 .txt 파일들이 위치한 디렉토리 경로
+        dst_csv (str): 결과 CSV 파일 경로 (확장자는 자동으로 `.csv`)
+
+    처리 과정:
+        1. 모든 .txt 파일의 내용을 읽고 2번째 줄부터 텍스트 추출
+        2. 문장 단위 분리 (KSS 사용)
+        3. 인과관계 정규식 매칭하여 라벨링 (1: 포함, 0: 미포함)
+        4. sentence,label 형식으로 CSV 저장
+
+    Returns:
+        None: 결과는 파일로 저장되며 함수 자체는 반환값이 없습니다.
     """
     src_path = Path(src_dir)
     if not src_path.exists() or not src_path.is_dir():
@@ -104,6 +128,16 @@ def build_csv(src_dir: str, dst_csv: str):
 
 # -------------------------------------------------------------------
 if __name__ == "__main__":
+    """
+    명령줄 인자를 통해 디렉토리 내 .txt 파일을 읽고 CSV 파일을 생성합니다.
+
+    필수 인자:
+        --src: 입력 디렉토리 경로
+        --dst: 결과 파일 이름 접두어 (확장자는 자동으로 붙음)
+
+    예시:
+        python dataset.py --src raw_texts/ --dst train
+    """
     import argparse
 
     parser = argparse.ArgumentParser(
@@ -120,10 +154,10 @@ if __name__ == "__main__":
         help="생성할 CSV 파일 경로 (sentence,label 형식)"
     )
     args = parser.parse_args()
-    
+
     # 현재 날짜 및 시간 추가
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    
+
     # 최종 CSV 파일명 만들기
     output_csv = f"{args.dst}_{timestamp}.csv"
 

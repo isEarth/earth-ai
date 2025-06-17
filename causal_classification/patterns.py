@@ -1,4 +1,24 @@
-# causal_patterns.py
+"""
+causal_patterns.py
+
+인과관계 문장 분류를 위한 정규표현식 패턴 정의 모듈입니다.
+
+이 모듈은 한국어 문장에서 인과관계를 표현하는 접두사 기반 어절 및
+단어 패턴을 정의하여 리스트 `CAUSAL_PATTERNS`에 담습니다.
+
+외부에서는 `from causal_patterns import CAUSAL_PATTERNS` 형태로
+해당 패턴 리스트를 불러와 정규식 매칭에 사용할 수 있습니다.
+
+예시:
+    import re
+    from causal_patterns import CAUSAL_PATTERNS
+
+    text = "그러므로 우리는 준비가 필요하다."
+    for pattern in CAUSAL_PATTERNS:
+        if re.search(pattern, text):
+            print("인과 패턴 포함")
+            break
+"""
 
 import re
 
