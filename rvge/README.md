@@ -30,7 +30,13 @@
 
 ![alt text](flow.png)
 
----
+
+## 모델 성능
+<p align="center">
+  <img src="loss_plot.png" width="300"/>
+  <img src="link_performance.png" width="300"/>
+  <img src="type_performance.png" width="300"/>
+</p>
 
 ## 실행 방법
 #### 1. 환경 설정
@@ -70,11 +76,3 @@ RVGAE/
 ├── predict.py           # 링크 및 타입 예측 실행
 └── requirements.txt     # 환경 설정
 ```
-
-## 모델 성능
-<p align="center">
-  <img src="loss_plot.png" width="300"/>
-  <img src="link_performance.png" width="300"/>
-  <img src="type_performance.png" width="300"/>
-</p>
-
