@@ -1,3 +1,23 @@
+"""
+RVGAE (Relational Variational Graph Autoencoder)
+
+이 모델은 노드 간 관계 정보를 학습하여:
+- 노드 임베딩(z)을 생성하고
+- 노드 쌍 간의 링크 존재 여부와
+- 관계 타입(링크 유형)을 예측하는 목적의 그래프 오토인코더이다.
+
+[구성요소]
+1. 인코더 (R-GCN 기반): 
+   - 입력 노드 임베딩(x)과 관계 유형(edge_type)을 이용해
+   - 평균(mean), 표준편차(logstd)를 생성하고,
+   - 샘플링된 잠재 벡터 z를 생성함
+
+2. 디코더 (공유 구조):
+   - 두 노드 간 임베딩을 concat → shared layer → 
+   - [1] 링크 존재 확률 예측 (Sigmoid)
+   - [2] 링크 타입 분류 (Softmax)
+"""
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
