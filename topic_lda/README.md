@@ -51,11 +51,11 @@ YouTube 경제 뉴스 스크립트를 기반으로, LDA(Latent Dirichlet Allocat
 ## 실행 방법
 1. 환경 설정
 ```
-python 3.9
-kiwipiepy 0.21.0
-gensim 4.3.3
-scikit-learn 1.6.1
-scipy 1.13.1
+- python 3.9
+- kiwipiepy 0.21.0
+- gensim 4.3.3
+- scikit-learn 1.6.1
+- scipy 1.13.1
 ```
 2. 의존성 설치
 ```
