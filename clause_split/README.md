@@ -4,7 +4,7 @@
 **문장 또는 절(clause) 단위 임베딩**을 기반으로, **대규모 텍스트** 사이의 **의미 유사성**을 효율적으로 탐색하고, 구조화된 텍스트 관계를 추출하는 전체 파이프라인입니다.  
 
 - **PyTorch 기반 학습 및 추론**
-- **기반 빠른 유사도 검색**
+- **Custom 차원 축소/확장 모듈 빠른 유사도 검색**
 - **절 경계 예측, 임베딩 생성, 유사 절쌍 탐색, 전처리까지 포함한 엔드투엔드 시스템**
 
 
@@ -13,13 +13,15 @@
 
 [Raw Text]
 ↓
-[prediction.py] 문장을 절 단위로 분할 (KF-DeBERTa tagging)
+[processing.py] 문장 전처리 (문장분리, 오타/구어체 보정, 경제용어 기반 filtering)
 ↓
-[embedding] 절 단위 벡터 임베딩 생성
+[prediction.py] 문장을 절 단위로 분할 (KF-DeBERTa + finetuned custom TaggingModel)
 ↓
-[decide_same.py] 의미 유사 절쌍 탐색 (cosine similarity)
+[embedding] 절 단위 벡터 임베딩 생성 및 s-bert기법 가공
 ↓
-[test.py] 결과 출력 및 유사 절쌍 시각화 / 저장
+[decide_same.py] 의미 유사 절쌍 탐색 (cosine similarity + tf-idf + Kmean clustering)
+↓
+[test.py] 결과 시각화
 ```
 <br>
 
