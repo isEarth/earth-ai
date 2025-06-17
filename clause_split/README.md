@@ -31,6 +31,19 @@
 <img src="./image-3.png" width="500"/> 
 </p>
 
+## 주요 기술 스택
+
+| Task               | Tool/Library                |
+|--------------------|-----------------------------|
+| Transformer 모델   | HuggingFace Transformers    |
+| 임베딩            | KoBERT / KF-DeBERTa         |
+| 토큰화            | `AutoTokenizer`, `Kiwi`     |
+| 유사도 계산       | PyTorch `cosine_similarity` |
+| 빠른 탐색         | FAISS / ScaNN (선택 가능)  |
+| 시각화/진행상황    | `tqdm`, `matplotlib`         |
+
+---
+
 ## 실행 방법
 1. 환경 설정
 ```
