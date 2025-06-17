@@ -66,13 +66,13 @@
 # ======================
 
 
-from transformers import AutoTokenizer, DebertaV2Model
+from transformers import AutoTokenizer, AutoModel
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 from kiwipiepy import Kiwi
 from tqdm import tqdm
 import numpy as np
-from numpy import ndarray
 import pandas as pd
 from train import Config, Variables, TaggingModel, LabelData
 from processing import open_and_preprocess, select_terms
@@ -86,14 +86,15 @@ import sqlite3
 @dataclass
 class FileNames():
     clause_model_pt : str = "../clause_model_earth.pt"
-
-    extra_name : str      = "_total"
+    # --------------- #
+    extra_name : str      = "_top6"
     saved_dir : str       = "./saved_data/"
     splited_json : str    = saved_dir+ f'splited{extra_name}.json'
     embedding_np : str    = saved_dir+ f'clause_embedding{extra_name}.npy'
-    significant_jsonl: str = saved_dir+ f'significant{extra_name}.jsonl'
+    sbert_np : str        = saved_dir+ f'sbert{extra_name}.npy'
+    significant_jsonl:str = saved_dir+ f'significant{extra_name}.jsonl'
     clause_db: str        = saved_dir+ f'clause{extra_name}.db'
-    triplets_np: str        = saved_dir+ f'triplets{extra_name}.npy'
+    triplets_np: str      = saved_dir+ f'triplets{extra_name}.npy'
     saved_temp_dir : str  = './saved_temp'
     relation_trigger: str = "../data/relation_trigger.csv"
 
@@ -290,7 +291,7 @@ class ClauseSpliting:
     - self.embeds: DeBERTa 기반 절 임베딩 ([CLS])
     - ./saved_data 디렉토리에 JSON, JSONL, NPY, DB 등 다수 파일 저장
     """
-    def __init__(self, sentences, config = Config(), filenames =FileNames(), e_option: Literal['all', 'E3', 'E2', 'E'] = 'E3', threshold=True):
+    def __init__(self, sentences = None, config = Config(), filenames =FileNames(), e_option: Literal['all', 'E3', 'E2', 'E'] = 'E3', threshold=True, reference_mode = False):
         """
         초기화 메서드
         - tokenizer, tagging model, embedding model, 설정 값 등을 로드함
@@ -308,43 +309,67 @@ class ClauseSpliting:
         self.config.important_words_ratio = getattr(self.config, 'important_words_ratio', 0.6)
         self.model = TaggingModel(self.config)
         self.model.load_state_dict(torch.load(self.filenames.clause_model_pt))
-        self.embedding_model = DebertaV2Model.from_pretrained(self.config.model)
+        self.embedding_model = AutoModel.from_pretrained(self.config.model)
         self.tokenizer = AutoTokenizer.from_pretrained(self.config.model)
+        self.concat_project = ConcatProject()
         self.sentences = sentences
+        self.meanpooled_embeds = None
         self.cls_vectors = []
+        self.rel_map = {'없음': 0, '기타': 1, '대조/병렬': 2, '상황': 3, '수단': 4, '역인과': 5, '예시': 6, '인과': 7}
         option_map = {'all': ['E', 'E2', 'E3'], 'E2': ['E', 'E2'], 'E3': ['E', 'E3'], 'E': ['E']}
         self.elist = option_map.get(e_option, ['E'])
         self.threshold = Variables().confidence_avg * self.config.confidence_threshold if threshold else 0.0
-        if os.path.exists(self.filenames.splited_json):
-            with open(self.filenames.splited_json, "r", encoding="utf-8-sig") as f:
-                self.splited = json.load(f)
-            self.meanpooled_embeds = None
-        else:
-            self.splited, self.meanpooled_embeds = self.split2Clause()
-            with open(self.filenames.splited_json, "w", encoding="utf-8-sig") as f:
-                json.dump(self.splited, f, ensure_ascii=False, indent=2)
-            self.set_db()
-        
-        if not os.path.exists(self.filenames.embedding_np):
-            self.embeds = self.clause_embedding(self.splited, print_highlighted= False)
-        else:
-            self.embeds = None
+        if (not reference_mode) and (not sentences) :
+            raise ValueError("sentences must be exist in reference_mode=False")
 
-    def make_2d(self,obj : list):
+        if not reference_mode:
+            switch = False
+            if os.path.exists(self.filenames.splited_json):
+                with open(self.filenames.splited_json, "r", encoding="utf-8-sig") as f:
+                    self.splited = json.load(f)
+                    if (len(self.splited)) != len(self.sentences):
+                        switch = True    
+            else:
+                switch = True
+            if switch :
+                self.splited, self.meanpooled_embeds = self.split2Clause(self.sentences)
+                with open(self.filenames.splited_json, "w", encoding="utf-8-sig") as f:
+                    json.dump(self.splited, f, ensure_ascii=False, indent=2)
+                self.set_db()
+            
+            if not os.path.exists(self.filenames.embedding_np):
+                self.embeds = self.clause_embedding(self.splited, print_highlighted= False)
+            else:
+                self.embeds = None
+
+    def make_nd(self, obj: list, target_depth: int = 2):
+        """
+        리스트의 현재 중첩 깊이를 계산하고, target_depth만큼 감싸서 맞춤.
+
+        Args:
+            obj (list): 입력 리스트
+            target_depth (int): 목표 차원 깊이 (예: 2 → 2D, 3 → 3D)
+
+        Returns:
+            tuple: (수정된 리스트, 원래 깊이)
+        """
         depth = 0
         _obj = obj
-        while isinstance(_obj, list) and depth < 2:
+        while isinstance(_obj, list):
             if not _obj:
                 break
             _obj = _obj[0]
             depth += 1
-        if depth > 2:
-            raise ValueError("Too much depth of data!")
-        for _ in range(2 - depth):
+
+        if depth > target_depth:
+            raise ValueError(f"Too much depth ({depth}) for target {target_depth}!")
+
+        for _ in range(target_depth - depth):
             obj = [obj]
+
         return obj, depth
 
-    def split2Clause(self):
+    def split2Clause(self, data):
         """
         Tagging 모델을 활용해 입력 문장을 절(clause) 단위로 분할하고, 각 절의 mean pooling 임베딩을 생성합니다.
 
@@ -353,6 +378,9 @@ class ClauseSpliting:
         - 절의 최소 길이(threshold) 이하인 경우 삭제합니다.
         - 각 절마다 hidden state에서 mean pooling된 임베딩 벡터를 추출합니다.
 
+        Args:
+            data (List[str] or List[List[str]]): 분리할 문장 리스트 또는 문장 그룹
+
         Returns:
             Tuple[
                 List[List[List[str]]],      # 분리된 절 리스트 → [video][sentence][clause]
@@ -360,7 +388,7 @@ class ClauseSpliting:
             ]
         """
 
-        total, depth = self.make_2d(self.sentences)
+        total, depth = self.make_nd(data, target_depth=2)
         
         results, embedding_t = [], []  # 최종 결과 (절 단위 문장 리스트)와 임베딩 벡터 리스트
         print("split to clause : ")
@@ -441,7 +469,7 @@ class ClauseSpliting:
             return results[0][0], embedding_t[0][0]
         return results, embedding_t
 
-    def clause_embedding(self, splited, print_highlighted: bool = True):
+    def clause_embedding(self, splited, print_highlighted: bool = True, highlight: bool = True, sbert_option: bool = False):
         """
         분리된 절 리스트(splited)를 바탕으로:
         - DeBERTa 임베딩을 통해 각 절의 [CLS] 임베딩 추출
@@ -460,102 +488,139 @@ class ClauseSpliting:
             - significant_jsonl 파일에 clause + 강조 단어 JSONL 저장
             - embedding_np 파일로 모든 임베딩 병합 저장
         """
-        def save_batch_npy(batch_result, save_dir, batch_idx):
+        
+        def delete_history_log(save_dir: str, file_type = None):
+            """
+            save_dir 내에 존재하는 {file_type}_batch_*.npy 파일들을 찾아 삭제합니다.
+
+            Args:
+                save_dir (str): 저장된 배치 파일들이 있는 디렉터리
+                output_path (str): 최종 출력 결과 경로 (해당 파일도 삭제함)
+                file_type (str): 파일 접두어 (예: 'embedding', 'relation' 등)
+            """
+            if file_type is None:
+                print("⚠️ file_type을 지정하세요.")
+                return
+
+            files = [
+                f for f in os.listdir(save_dir)
+                if f.startswith(f"{file_type}_batch_") and f.endswith(".npy")]
+            for file in files:
+                full_path = os.path.join(save_dir, file)
+                if os.path.exists(full_path):
+                    os.remove(full_path)
+            print(f"{len(files)}개의 임시 파일 삭제됨.")
+
+
+        def save_batch_npy(batch_result, save_dir, file, batch_idx):
             os.makedirs(save_dir, exist_ok=True)
-            path = os.path.join(save_dir, f'embedding_batch_{batch_idx}.npy')
-            np.save(path, np.array(batch_result, dtype=object)) # 읽을때 allow_pickle=True 필요
+            path = os.path.join(save_dir, f'{file}_batch_{batch_idx}.npy')
+            np.save(path, np.array(batch_result, dtype=object))  # 읽을때 allow_pickle=True 필요
+
 
         with open(self.filenames.significant_jsonl, "w", encoding="utf-8") as f:
             pass  # 초기화
-        self.embedding_model.to("cuda")
+        self.embedding_model = self.embedding_model.to("cuda")
         all_result = [] if len(splited) < self.config.return_embed_max else None
 
         print("splited.shape \t cls_vectors.shape    mp_embeds.shape")
         print(get_shape(splited), get_shape(self.cls_vectors), get_shape(self.meanpooled_embeds))
-
+        delete_history_log(self.filenames.saved_temp_dir, file_type="embedding")
+        delete_history_log(self.filenames.saved_temp_dir, file_type="sbert")
         # batch iter [3707,44,2,768] -> [37,100,44,2,768]
         for batch_idx in range(0, len(splited), self.config.save_batch):
             start = batch_idx
             end = batch_idx + self.config.save_batch
             batch = splited[start:end]
-            batch_cls_vectors = self.cls_vectors[start:end]
+            batch_cls_vectors = self.cls_vectors[start:end] if len(self.cls_vectors) else None
             if not self.meanpooled_embeds == None:
                 batch_meanpooled_embeds = self.meanpooled_embeds[start:end] 
 
-            result, highlighted = [], [[],[],[]]
+            result, sbert, highlighted = [], [], [[],[],[]]
             # video iter : for [44,2,768] in [100,44,2,768]
             for V in tqdm(range(len(batch)), desc=f"Batch {batch_idx // self.config.save_batch}"):
-                temp, highlight_temp = [], [[],[],[]] 
+                temp_embed, temp_sbert, highlight_temp = [], [], [[],[],[]] 
                 # sentence iter : for [2,768] in [44,2,768]
                 for S in range(len(batch[V])): 
-                    temp_video, highlight_video = [], [[],[],[]]
+                    temp_video, _temp_sbert, highlight_video = [], [], [[],[],[]]
                     # clause iter : for [768] in [2,768]
                     for C in range(len(batch[V][S])):
                         s = batch[V][S][C]
-                        s_cls = batch_cls_vectors[V][S].to('cuda')
+                        if batch_cls_vectors:
+                            s_cls = batch_cls_vectors[V][S].to('cuda')
                         if self.meanpooled_embeds != None:
                             s_mp_emb = batch_meanpooled_embeds[V][S][C].to('cuda')
-                        else:
-                            s_mp_emb = torch.zeros_like(s_cls).to('cuda')
+
                         # 구문 단위 [CLS] 임베딩 추출
-                        inputs = self.tokenizer(s, return_tensors='pt', add_special_tokens=True)
+                        inputs = self.tokenizer(text=s, return_tensors='pt', add_special_tokens=True)
                         input_ids = inputs["input_ids"]
                         inputs = {k: v.to("cuda") for k, v in inputs.items()}
                         with torch.no_grad():
                             outputs = self.embedding_model(**inputs)
                         hidden_states, cls_clause = outputs.last_hidden_state, outputs.last_hidden_state[:, 0, :]
                         temp_video.append(cls_clause.squeeze(0).cpu().numpy())
-                        # 단어 수준 의미 추출을 위한 사전처리
-                        real = self.str2real(s, output_str=False)
-                        tokens = self.tokenizer.convert_ids_to_tokens(input_ids[0])
-                        token_map = []
-                        for idx, tok in enumerate(tokens):
-                            if tok in self.tokenizer.all_special_tokens:
-                                continue
-                            clean_tok = tok[2:] if tok.startswith("##") else tok
-                            for word in real:
-                                if clean_tok in word:
-                                    token_map.append((word, idx))
-                                    break
+                        if sbert_option:
+                            _temp_sbert.append(self.sbert(cls_clause.squeeze(0).cpu(), hidden_states[0]).detach().cpu().numpy())
 
-                        # 각 단어별 토큰 인덱스 집계
-                        word2indices = {}
-                        for word, idx in token_map:
-                            word2indices.setdefault(word, []).append(idx)
+                        if highlight:
+                            # 단어 수준 의미 추출을 위한 사전처리
+                            real = self.str2real(s, output_str=False)
+                            tokens = self.tokenizer.convert_ids_to_tokens(input_ids[0])
+                            token_map = []
+                            for idx, tok in enumerate(tokens):
+                                if tok in self.tokenizer.all_special_tokens:
+                                    continue
+                                clean_tok = tok[2:] if tok.startswith("##") else tok
+                                for word in real:
+                                    if clean_tok in word:
+                                        token_map.append((word, idx))
+                                        break
 
-                        # 각 단어의 벡터들과 [CLS] 벡터 간 cosine similarity 평균 계산
-                        standard1 = cls_clause[0].unsqueeze(0)
-                        standard2 = s_cls.unsqueeze(0)
-                        standard3 = s_mp_emb.unsqueeze(0)
+                            # 각 단어별 토큰 인덱스 집계
+                            word2indices = {}
+                            for word, idx in token_map:
+                                word2indices.setdefault(word, []).append(idx)
 
-                        def similarity(standard):
-                            word_scores = []
-                            for word, indices in word2indices.items():
-                                vecs = torch.stack([hidden_states[0, i] for i in indices])
+                            # 각 단어의 벡터들과 [CLS] 벡터 간 cosine similarity 평균 계산
+                            standard1 = cls_clause[0].unsqueeze(0)
+                            standard2 = s_cls.unsqueeze(0) if batch_cls_vectors else None
+                            standard3 = s_mp_emb.unsqueeze(0) if self.meanpooled_embeds else None
 
-                                sims = F.cosine_similarity(vecs, standard, dim=1)
-                                score = self.rms(sims)  
-                                word_scores.append((word, float(score)))
-                            word_scores_sorted = sorted(word_scores, key=lambda x: x[1], reverse=True)                 
+                            def similarity(standard):
+                                if standard == None:
+                                    return
+                                word_scores = []
+                                for word, indices in word2indices.items():
+                                    vecs = torch.stack([hidden_states[0, i] for i in indices])
 
-                            # 유사도 기준 상위 단어를 의미 강조 단어로 선정 (default 60%)
-                            top_n = max(1, int(len(word_scores_sorted) * self.config.important_words_ratio))
-                            top_words = {word for word, _ in word_scores_sorted[:top_n]}
-                            return [word for word in real if word in top_words]
+                                    sims = F.cosine_similarity(vecs, standard, dim=1)
+                                    score = self.rms(sims)  
+                                    word_scores.append((word, float(score)))
+                                word_scores_sorted = sorted(word_scores, key=lambda x: x[1], reverse=True)                 
 
-                        highlight_video[0].append(similarity(standard1))
-                        highlight_video[1].append(similarity(standard2))
-                        highlight_video[2].append(similarity(standard3))
-                    temp.append(temp_video)
-                    highlight_temp[0].append(highlight_video[0])
-                    highlight_temp[1].append(highlight_video[1])
-                    highlight_temp[2].append(highlight_video[2])
-                result.append(temp)
-                highlighted[0].append(highlight_temp[0])
-                highlighted[1].append(highlight_temp[1])
-                highlighted[2].append(highlight_temp[2])
+                                # 유사도 기준 상위 단어를 의미 강조 단어로 선정 (default 60%)
+                                top_n = max(1, int(len(word_scores_sorted) * self.config.important_words_ratio))
+                                top_words = {word for word, _ in word_scores_sorted[:top_n]}
+                                return [word for word in real if word in top_words]
 
-            if print_highlighted :
+                            highlight_video[0].append(similarity(standard1))
+                            highlight_video[1].append(similarity(standard2))
+                            highlight_video[2].append(similarity(standard3))
+                    
+                    temp_embed.append(temp_video)
+                    temp_sbert.append(_temp_sbert)
+                    if highlight:
+                        highlight_temp[0].append(highlight_video[0])
+                        highlight_temp[1].append(highlight_video[1])
+                        highlight_temp[2].append(highlight_video[2])
+                result.append(temp_embed)
+                sbert.append(temp_sbert)
+                if highlight:
+                    highlighted[0].append(highlight_temp[0])
+                    highlighted[1].append(highlight_temp[1])
+                    highlighted[2].append(highlight_temp[2])
+
+            if print_highlighted and highlight:
                 for sentences, h1,h2,h3 in zip(batch, highlighted[0],highlighted[1],highlighted[2]):
                     for a,b,c in zip(highlight(sentences, h1, True),highlight(sentences, h2, True),highlight(sentences, h3, True)):
                         print('C:',a)
@@ -564,18 +629,20 @@ class ClauseSpliting:
                             print('E:',c)
                         print()
                     break
+            if highlight:
+                for clauses, highlights in zip(batch, highlighted[0]):
+                    item = {"clause": clauses, "highlight": highlights}
+                    with open(self.filenames.significant_jsonl, "a", encoding="utf-8") as f:
+                        f.write(json.dumps(item, ensure_ascii=False) + "\n")
 
-            for clauses, highlights in zip(batch, highlighted[0]):
-                item = {"clause": clauses, "highlight": highlights}
-                with open(self.filenames.significant_jsonl, "a", encoding="utf-8") as f:
-                    f.write(json.dumps(item, ensure_ascii=False) + "\n")
-
-            save_batch_npy(result, self.filenames.saved_temp_dir, batch_idx)
+            save_batch_npy(result, self.filenames.saved_temp_dir, file="embedding", batch_idx=batch_idx)
+            if sbert:
+                save_batch_npy(sbert, self.filenames.saved_temp_dir, file="sbert", batch_idx=batch_idx)
             if all_result is not None:
                 all_result.extend(result)
 
-        def load_and_merge_npy(save_dir: str, output_path: str):
-            files = [f for f in os.listdir(save_dir) if f.startswith("embedding_batch_") and f.endswith(".npy")]
+        def load_and_merge_npy(save_dir: str, output_path: str,file_type = None):
+            files = [f for f in os.listdir(save_dir) if f.startswith(f"{file_type}_batch_") and f.endswith(".npy")]
             if not files:
                 raise FileNotFoundError("병합할 .npy 파일이 없습니다.")
             files = sorted(files, key=lambda x: int(x.split('_')[-1].split('.')[0]))
@@ -589,9 +656,16 @@ class ClauseSpliting:
                 data = np.load(batch_path, allow_pickle=True)
                 merged.extend(data)
             np.save(output_path, np.array(merged, dtype=object))
+            print(f"npy file merged! path: {output_path} and length is : ",len(merged))
 
-        load_and_merge_npy(self.filenames.saved_temp_dir, self.filenames.embedding_np)
+        load_and_merge_npy(self.filenames.saved_temp_dir, self.filenames.embedding_np, file_type="embedding")
+        if sbert:
+            load_and_merge_npy(self.filenames.saved_temp_dir, self.filenames.sbert_np, file_type="sbert")
         return all_result
+
+    def sbert(self, cls_clause, hidden_states, mode= 'mean'):
+        projected = self.concat_project(cls_clause, hidden_states, mode=mode)
+        return projected
 
     def is_gram(self, word):
         """주어진 단어가 조사(J), 어미(E), 접미사(XS)인지 여부 확인"""
@@ -823,7 +897,7 @@ class ClauseSpliting:
             - self.history['num_clauses']에 절 수 저장
             - ClauseDB.close() 호출하여 DB 종료
         """
-        db = ClauseDB(self.filenames.clause_db, self.filenames.embedding_np, self.rel_map)
+        db = ClauseDB(self.filenames.clause_db, self.filenames.embedding_np)
         batch = [] # batchsize: 1000개
         for V, video in enumerate(self.splited): # max 없음
             for S, sentence in enumerate(video): # max 10000
@@ -851,7 +925,7 @@ class ClauseSpliting:
         """
         db: ClauseDB instance
         """
-        db = ClauseDB(self.filenames.clause_db, self.filenames.embedding_np, self.rel_map)
+        db = ClauseDB(self.filenames.clause_db, self.filenames.embedding_np)
         result = db.get_all_clauses(return_format='sents', return_id=True)
 
         if len(result) != self.history['num_clauses']:
@@ -859,7 +933,7 @@ class ClauseSpliting:
         db.close()
         return result
 
-    def print_triplets(self, number = float('inf'),triplets: np.ndarray = None):
+    def print_triplets(self, number = float('inf'), triplets: np.ndarray = None):
         """
         DB에 저장된 절(clause)을 바탕으로, 저장된 관계(triplets)를 사람이 읽을 수 있는 형태로 출력합니다.
 
@@ -920,8 +994,9 @@ class ClauseDB:
     
     def __init__(self, db_path, embedding_path, rel_map: dict = None):
         print("[ClauseDB] Opening DB:", db_path)
-        self.rel_map = rel_map if rel_map else {'없음': 0}
+        self.rel_map = rel_map if rel_map else {'없음': 0, '기타': 1, '대조/병렬': 2, '상황': 3, '수단': 4, '역인과': 5, '예시': 6, '인과': 7}
         self.rev_map = {v: k for k, v in rel_map.items()} if rel_map else {0: '없음'}
+        os.makedirs(os.path.dirname(db_path), exist_ok=True)
         self.conn = sqlite3.connect(db_path)
         self.cur = self.conn.cursor()
         # self.cur.execute("PRAGMA journal_mode = WAL") # 속도 향상
@@ -933,6 +1008,20 @@ class ClauseDB:
             self.embeddings = list(np.load(self.embedding_path, allow_pickle=True))  # list of video
         else:
             self.embeddings = []
+
+    def id2VSC(self, clause_id):
+        clause_id = int(clause_id)
+        V = clause_id // 100000
+        S = (clause_id % 100000) // 10
+        C = clause_id % 10
+        return V,S,C
+
+    def f5(self):
+        if os.path.exists(self.embedding_path):
+            self.embeddings = list(np.load(self.embedding_path, allow_pickle=True))
+            return True
+        else:
+            return False
 
     def _create_table(self):
         self.cur.execute("""
@@ -950,13 +1039,38 @@ class ClauseDB:
         Args:
             batch (List[Tuple[clause_id, clause]]): 절 ID와 텍스트 쌍 리스트
         """
-        self.cur.executemany(
-            "INSERT OR REPLACE INTO clause_data (id, clause) VALUES (?, ?)",
-            batch
-        )
-        self.conn.commit()
+        if not batch:
+            print("⚠️ [insert_batch] 비어있는 배치가 들어왔습니다. 처리하지 않습니다.")
+            return
 
-    def insert_video(self, video_embeddings: list[list[ndarray]], clause_items: list[tuple[int, str]], auto_save=True):  
+        valid_batch = []
+        for i, item in enumerate(batch):
+            try:
+                int(item[0])
+            except ValueError:
+                print(f"❌ [insert_batch] 잘못된 형식 @ index {i}: {item}")
+            if (not isinstance(item, tuple) or
+                len(item) != 2 or
+                not isinstance(item[1], str)):
+                print(f"❌ [insert_batch] 잘못된 형식 @ index {i}: {item}")
+                continue
+            valid_batch.append(item)
+
+        if not valid_batch:
+            print("❌ [insert_batch] 유효한 항목이 없습니다. 삽입 생략.")
+            return
+
+        try:
+            self.cur.executemany(
+                "INSERT OR REPLACE INTO clause_data (id, clause) VALUES (?, ?)",
+                valid_batch
+            )
+            self.conn.commit()
+            # print(f"✅ [insert_batch] 총 {len(valid_batch)}개 삽입 완료.")
+        except Exception as e:
+            print(f"🔥 [insert_batch] DB 삽입 중 예외 발생: {e}")
+
+    def insert_video(self, video_embeddings: list[list], clause_items: list[tuple[int, str]], auto_save=True):  
         """
         하나의 video에 대한 clause 전체를 임베딩과 함께 DB에 삽입합니다.
 
@@ -985,8 +1099,8 @@ class ClauseDB:
         """
         [clause_id] -> [clause] id에 맞는 절 텍스트를 DB에서 조회합니다.
         """
-        clause_id = int(clause_id)
-        self.cur.execute("SELECT clause FROM clause_data WHERE id=?", (str(clause_id),))
+        clause_id = str(clause_id)
+        self.cur.execute("SELECT clause FROM clause_data WHERE id=?", (clause_id,))
         row = self.cur.fetchone()
         return row[0] if row else None
 
@@ -994,13 +1108,43 @@ class ClauseDB:
         """
         [clause_id] -> [embedding vector] id에 맞는 임베딩벡터를 반환합니다.
         """
-        clause_id = int(clause_id)
-        V = clause_id // 100000
-        S = (clause_id % 100000) // 10
-        C = clause_id % 10
+        self.f5()
+        V,S,C = self.id2VSC(clause_id)
         if V < len(self.embeddings) and S < len(self.embeddings[V]) and C < len(self.embeddings[V][S]):
             return self.embeddings[V][S][C]
         return None
+
+    def get_all_embedding(self, return_id = False, return_dict = False):
+        self.f5()
+        flatten = {} if return_dict else []
+        print("Embedding number : ",len([clause for video_unit in self.embeddings for sentence in video_unit for clause in sentence]))
+        for V, video in tqdm(enumerate(self.embeddings), desc="Embedding 로딩"):
+            if video is None: continue
+            for S, sentence in enumerate(video):
+                if sentence is None: continue
+                for C, emb in enumerate(sentence):
+                    if emb is None: continue
+                    clause_id = V * 100000 + S * 10 + C
+                    if return_dict:
+                        flatten[clause_id] = emb
+                    else :
+                        flatten.append((clause_id,emb) if return_id else emb)
+        return flatten 
+        
+    def get_id(self, clause_text):
+        """
+        !!! 추천하지 않습니다. 주의: 절 텍스트는 고유해야 합니다. !!!
+        [clause_text] -> [clause_id] 절 텍스트에 해당하는 id를 DB에서 조회합니다.
+
+        Args:
+            clause_text (str): 절 텍스트
+
+        Returns:
+            int 또는 None: 해당 텍스트에 매칭되는 id (없으면 None)
+        """
+        self.cur.execute("SELECT id FROM clause_data WHERE clause=?", (clause_text,))
+        row = self.cur.fetchone()
+        return int(row[0]) if row else None
 
     def get_all_clauses(self, return_format="videos", return_id=False):
         """
@@ -1020,18 +1164,16 @@ class ClauseDB:
             raise ValueError(f"Invalid return_format: '{return_format}'. Choose from \[videos, sents, clauses\]")
         
         self.cur.execute("SELECT id, clause FROM clause_data")
-        if return_format == "clauses":
-            return dict(self.cur.fetchall()) if return_id else [clause for _, clause in self.cur.fetchall()]
-        
         rows = self.cur.fetchall()
         print(f"get_all_clauses : Fetched {len(rows)} clauses from the database.")
+
+        if return_format == "clauses":
+            return dict(rows) if return_id else [clause for _, clause in rows]
+        
         video = []
 
         for clause_id, clause in rows:
-            clause_id = int(clause_id)
-            V = clause_id // 100000
-            S = (clause_id % 100000) // 10
-            C = clause_id % 10
+            V,S,C = self.id2VSC(clause_id)
             while len(video) <= V: # V 차원 확장
                 video.append([])
             while len(video[V]) <= S: # S 차원 확장
@@ -1051,26 +1193,105 @@ class ClauseDB:
     
     def count_clauses(self):
         self.cur.execute("SELECT COUNT(*) FROM clause_data")
-        return self.cur.fetchone()[0]
+        length = self.cur.fetchone()[0]
+        return length
     
     def close(self):
         self.conn.close()
+
+    def __enter__(self):
+        return self
+    
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
+        if exc_type is not None:
+            print(f"[ClauseDB] Error occurred: {exc_value}")
+        else:
+            print("[ClauseDB] Closed successfully.")
+
+    def reset_database(self):
+        """
+        clause_data 테이블의 모든 내용을 삭제합니다.
+        임베딩(npy 파일)은 유지됩니다.
+        """
+        self.cur.execute("DELETE FROM clause_data")
+        self.conn.commit()
+        print("[ClauseDB] clause_data 테이블이 초기화되었습니다.")
+
+    def reset_embeddings(self):
+        """
+        메모리 내 임베딩 리스트와 저장된 .npy 파일을 초기화합니다.
+        SQLite DB는 유지됩니다.
+        """
+        self.embeddings = []
+        if os.path.exists(self.embedding_path):
+            os.remove(self.embedding_path)
+            print(f"[ClauseDB] 임베딩 파일 삭제됨: {self.embedding_path}")
+        else:
+            print("[ClauseDB] 삭제할 임베딩 파일이 없습니다.")
+
+    def update_embedding(self, clause_id, embedding: np.ndarray):
+        if len(self.embeddings) == 0:
+            if not self.f5():
+                raise FileNotFoundError("There's no embedding saved.")
+        V,S,C = self.id2VSC(clause_id)
+        try:
+            self.embeddings[V][S][C] = embedding
+        except IndexError as e:
+            print('\033[95m'+"Embedding vector is not founded."+'\033[0m', e, f"[{V} {S} {C}]")
+        self.save_embedding_files()
+        self.f5()
+    
+    def delete_clause(self, clause_id: int):
+        """
+        clause_data 테이블에서 해당 ID의 텍스트를 삭제합니다.
+        """
+        clause_id = int(clause_id)
+        self.cur.execute("DELETE FROM clause_data WHERE id=?", (clause_id,))
+        self.conn.commit()
+
+class ConcatProject(nn.Module):
+    """
+    SBERT 방식 문장 임베딩 생성기
+    - [CLS] + mean/max pooled vector → concat → projection
+    """
+    def __init__(self, input_size = 768):
+        super(ConcatProject, self).__init__()
+        self.device = 'cuda'
+        self.linear = nn.Linear(input_size * 2, input_size).to(self.device)
+
+    def forward(self, cls_vector, hidden_states, mode='mean'):
+        cls_vector = cls_vector.to(self.device)
+        if mode == 'mean':
+            pooled = hidden_states[1:-1].mean(dim=0).to(self.device)  # [H]
+        elif mode == 'max':
+            pooled = hidden_states[1:-1].max(dim=0).values.to(self.device)  # [H]
+        else:
+            raise ValueError(f"Unsupported pooling mode: {mode}")
+
+        if pooled.shape != cls_vector.shape:
+            raise ValueError(f"Shape mismatch: pooled {pooled.shape}, cls_vector {cls_vector.shape}")
+        
+        concatted = torch.cat([cls_vector, pooled], dim=0)  # [2H]
+        projected = self.linear(concatted)  # [H]
+        return projected
 
 
 def main():
     config = Config()
     config.confidence_threshold = 0.15 # 구문 분리 기준, 높을 수록 많이 잘림림
     config.important_words_ratio = 0.5 # 중요 키워드 기준, 높을 수록 많이 탐지
-    config.clause_len_threshold = 3    # 구문 길이 제한, 어절 단위. 
+    config.clause_len_threshold = 3    # 구문 길이 제한, 어절 단위 
 
-    dir_ = "../data/youtube/"
-    file = "../data/youtube_filtered.json"
+    dir_ = "./top_6.json"
+    file = "./top_6_parsed.json"
+    filtered_file = "./top_6_filtered.json"
     if os.path.exists(file):
         print("preprocessed file detected!")
         with open(file, "r", encoding="utf-8-sig") as f:
             sentences = json.load(f)
     else:
-        sentences = select_terms(open_and_preprocess(dir_,file))
+        sentences = select_terms(open_and_preprocess(dir_,file),filtered_file)
 
     sentences = sentences
     cs = ClauseSpliting(sentences, e_option= 'E3', threshold= True)
