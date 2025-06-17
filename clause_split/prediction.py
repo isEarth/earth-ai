@@ -6,7 +6,7 @@
 # === 주요 모듈 ===
 # - ClauseSpliting : 문장 -> 절 분리 + 임베딩 + 강조 단어 추출 + 관계 추출
 # - ClauseDB       : SQLite DB 관리 및 임베딩 조회
-# - prediction     : tagging model을 통해 문장에서 E/E2/E3 위치 예측
+# - prediction     : tagging model을 통해 문장에서 E/I/C 위치 예측
 # - highlight      : 의미 강조 단어를 시각화 출력
 
 # ========================
@@ -274,7 +274,7 @@ class ClauseSpliting:
     문장을 절(clause) 단위로 분리하고 각 절의 의미 임베딩, 의미 강조 단어, 그리고 절 간 의미 관계를 추출하는 통합 처리 클래스.
 
     주된 기능:
-    - 구문 분리: 문장을 tagging model로 분석하여 E/E2/E3 태그 기반으로 절을 분리함
+    - 구문 분리: 문장을 tagging model로 분석하여 E/I/C 태그 기반으로 절을 분리함
     - 임베딩 생성: 각 절에 대해 DeBERTa 모델을 사용하여 [CLS] 벡터 및 mean pooling 벡터 생성
     - 의미 강조 단어 추출: [CLS] 벡터와 토큰 간 cosine 유사도 기반으로 중요한 단어 선정
     - 관계 추출: 단서사전 기반으로 절 간 인과/대조/조건 등의 의미 관계(triplet)를 추출
@@ -291,7 +291,7 @@ class ClauseSpliting:
     - self.embeds: DeBERTa 기반 절 임베딩 ([CLS])
     - ./saved_data 디렉토리에 JSON, JSONL, NPY, DB 등 다수 파일 저장
     """
-    def __init__(self, sentences = None, config = Config(), filenames =FileNames(), e_option: Literal['all', 'E3', 'E2', 'E'] = 'E3', threshold=True, reference_mode = False):
+    def __init__(self, sentences = None, config = Config(), filenames =FileNames(), e_option: Literal['all', 'C', 'I', 'E'] = 'C', threshold=True, reference_mode = False):
         """
         초기화 메서드
         - tokenizer, tagging model, embedding model, 설정 값 등을 로드함
@@ -316,7 +316,7 @@ class ClauseSpliting:
         self.meanpooled_embeds = None
         self.cls_vectors = []
         self.rel_map = {'없음': 0, '기타': 1, '대조/병렬': 2, '상황': 3, '수단': 4, '역인과': 5, '예시': 6, '인과': 7}
-        option_map = {'all': ['E', 'E2', 'E3'], 'E2': ['E', 'E2'], 'E3': ['E', 'E3'], 'E': ['E']}
+        option_map = {'all': ['E', 'I', 'C'], 'I': ['E', 'I'], 'C': ['E', 'C'], 'E': ['E']}
         self.elist = option_map.get(e_option, ['E'])
         self.threshold = Variables().confidence_avg * self.config.confidence_threshold if threshold else 0.0
         if (not reference_mode) and (not sentences) :
@@ -374,7 +374,7 @@ class ClauseSpliting:
         Tagging 모델을 활용해 입력 문장을 절(clause) 단위로 분할하고, 각 절의 mean pooling 임베딩을 생성합니다.
 
         동작 방식:
-        - 문장을 토크나이징하여 태깅 결과(E/E2/E3)를 기준으로 절을 나눕니다.
+        - 문장을 토크나이징하여 태깅 결과(E/I/C)를 기준으로 절을 나눕니다.
         - 절의 최소 길이(threshold) 이하인 경우 삭제합니다.
         - 각 절마다 hidden state에서 mean pooling된 임베딩 벡터를 추출합니다.
 
@@ -414,7 +414,7 @@ class ClauseSpliting:
                 clauses, clause, clause_end_idx, switch = [], [], [], False
 
                 for i, (tok, label, confidence) in enumerate(predicted):
-                    # 특정 라벨(`E`, `E2`, ...)이고 신뢰도 임계값 초과하며 의미역이 아닌 경우, 절 분리 시작
+                    # 특정 라벨(`E`, `I`, ...)이고 신뢰도 임계값 초과하며 의미역이 아닌 경우, 절 분리 시작
                     if label in self.elist and confidence > self.threshold and not self.is_segm(tok, predicted[i][0]):
                         switch = True
                     elif switch:
@@ -1294,7 +1294,7 @@ def main():
         sentences = select_terms(open_and_preprocess(dir_,file),filtered_file)
 
     sentences = sentences
-    cs = ClauseSpliting(sentences, e_option= 'E3', threshold= True)
+    cs = ClauseSpliting(sentences, e_option= 'C', threshold= True)
     cs.find_rel()
     cs.print_triplets(40)
     cs.summary(0)
