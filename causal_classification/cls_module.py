@@ -1,3 +1,14 @@
+"""
+cls_module.py - 인과 관계 문장 분류기
+
+설명:
+- HuggingFace Transformers pipeline을 활용해 사전 학습된 분류 모델로 문장 내 인과 관계 존재 여부를 예측합니다.
+- 입력은 CSV 또는 TXT 파일이며, 결과는 CSV로 저장됩니다.
+
+사용 예시:
+$ python cls_module.py -test golden_causal.csv
+$ python cls_module.py -test input_test.txt
+"""
 import argparse
 import re
 import os
@@ -21,6 +32,15 @@ clf = pipeline(
 )
 
 def classify_sentences(sentences_with_labels):
+    """
+    문장 리스트에 대해 인과관계 포함 여부를 분류합니다.
+
+    Args:
+        sentences_with_labels (List[Tuple[str, int or None]]): (문장, 골든라벨) 리스트
+
+    Returns:
+        pd.DataFrame: 분류 결과 (문장, 골든라벨, 예측라벨, 신뢰도 등)
+    """
     results = []
     for sentence, golden_label in tqdm(sentences_with_labels, desc="문장별 인과분류 진행"):
         output = clf(sentence)[0]
@@ -36,6 +56,15 @@ def classify_sentences(sentences_with_labels):
     return pd.DataFrame(results)
 
 def process_txt(input_path):
+    """
+    텍스트 파일에서 문장을 분리하여 분류합니다.
+
+    Args:
+        input_path (str): 텍스트 파일 경로
+
+    Returns:
+        pd.DataFrame: 분류 결과
+    """
     if not os.path.exists(input_path):
         raise FileNotFoundError(f"입력 파일이 존재하지 않습니다: {input_path}")
     with open(input_path, "r", encoding="utf-8") as f:
@@ -45,6 +74,15 @@ def process_txt(input_path):
     return classify_sentences(sentences)
 
 def process_csv(csv_path):
+    """
+    CSV 파일에서 문장-라벨 데이터를 불러와 분류합니다.
+
+    Args:
+        csv_path (str): CSV 파일 경로
+
+    Returns:
+        pd.DataFrame: 분류 결과
+    """
     if not os.path.exists(csv_path):
         raise FileNotFoundError(f"입력 CSV 파일이 존재하지 않습니다: {csv_path}")
     df = pd.read_csv(csv_path)

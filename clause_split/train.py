@@ -1,7 +1,18 @@
 # ===========================================================
-# Token Classification 학습 파이프라인 (DeBERTa 기반)
-# - 문장을 토큰 단위로 분류 (BIO 또는 절 경계 태그 등)
-# - HuggingFace Transformers + Accelerate + PyTorch 기반
+# Token Classification 알고리즘 패이플라인 (DeBERTa 기반)
+# -----------------------------------------------------------
+# - HuggingFace Transformers, Accelerate, PyTorch 기반
+# - 문장을 토큰 단위로 분류함 (BIO/절 경계 태그)
+# - 특수 토큰(-100)을 무시하고 loss와 메트릭 계산
+# ===========================================================
+# 이 파이프라인은 다음을 포함합니다:
+# - 토큰 단위 데이터에 대해 해당 태그 분류를 통해 학습
+# - DeBERTa의 encoder 복잡성을 가능하게 freeze 하고 classifier를 구축
+# - 모델은 huggingface의 `DebertaV2Model`과 `nn.Linear`로 구성
+# - 조금형 lr scheduler(CosineAnnealing), optimizer(AdamW), loss를 class weight로 결정
+# - `Trainer` 클래스에서 train/val loop, 메트릭 저장, 시각화 진행
+# - 시각화: loss, accuracy, precision, recall, f1 값을 epoch에 따라 plot
+# - `main()` 함수에서 개발 현재시간과 연결한 파일 저장
 # ===========================================================
 import os
 import json
@@ -214,8 +225,8 @@ class Trainer:
         self.optimizer = self._get_optimizer()
         self.scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(self.optimizer, T_0=5, eta_min=1e-7)
         self.train_losses, self.val_losses = [], []
-        self.train_metrics = []  
-        self.val_metrics = []    
+        self.train_metrics = []
+        self.val_metrics = []
         self.best_epoch = None
 
         Variables().confidence_avg = self.confidence_avg
@@ -243,7 +254,7 @@ class Trainer:
     def train_one_epoch(self, epoch):
         self.model.train()
         running_loss = 0
-        all_preds, all_labels = [], [] 
+        all_preds, all_labels = [], []
         for step, inputs in enumerate(tqdm(self.train_loader, desc=f"Train Epoch {epoch}")):
             subset = {k: inputs[k] for k in ['input_ids', 'attention_mask'] if k in inputs}
             with self.accelerator.accumulate(self.model):
@@ -255,7 +266,7 @@ class Trainer:
                     self.scheduler.step(epoch - 1 + step / len(self.train_loader))
                 self.optimizer.zero_grad()
                 running_loss += loss.item()
-            
+
             preds = torch.argmax(outputs, dim=-1)
             labels = inputs['labels']
             mask = labels != -100  # -100인 토큰은 무시
@@ -326,7 +337,7 @@ class Trainer:
                 self.accelerator.save(self.model.state_dict(), f"{output_dir}/clause_model_earth.pt")
             gc.collect()
             torch.cuda.empty_cache()
-    
+
     def save_metrics(self, output_dir: str):
             """
             훈련 및 검증 손실과 분류 지표를 metrics.json으로 저장합니다.
@@ -342,7 +353,7 @@ class Trainer:
             with open(os.path.join(output_dir, 'metrics.json'), 'w', encoding='utf-8') as f:
                 json.dump(metrics, f, ensure_ascii=False, indent=4)
             print(f"Metrics saved to {os.path.join(output_dir, 'metrics.json')}")
-    
+
     def plot_metrics(trainer, save_dir):
         """
         Trainer 인스턴스가 가지고 있는 train/val 손실과 분류 지표를
@@ -410,11 +421,11 @@ def main():
     accelerator = Accelerator(gradient_accumulation_steps=config.gradient_accumulation_steps)
     model = TaggingModel(config)
     trainer = Trainer(model, (train_loader, val_loader), config, accelerator)
-    
+
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     save_dir = f'save/{timestamp}'
     os.makedirs(save_dir, exist_ok=True)
-    
+
     trainer.fit(save_dir)
     trainer.save_metrics(save_dir)
     trainer.plot_metrics(save_dir)

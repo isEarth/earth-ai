@@ -1,3 +1,25 @@
+"""
+plot_metrics_from_trainer.py
+
+HuggingFace Trainer를 사용한 학습 결과 중 `trainer_state.json` 파일을 분석하여,
+학습 손실 및 검증 지표(e.g., loss, f1, precision 등)의 추이를 시각화합니다.
+
+입력 구조:
+    ./runs/run_YYYYMMDD_HHMMSS/checkpoint-*/trainer_state.json
+
+출력:
+    학습 및 검증 지표 그래프 (PNG 파일들)가 run 디렉토리 아래 `plots/`에 저장됩니다.
+
+사용 예시:
+    $ python plot_metrics_from_trainer.py
+
+함수 구성:
+    - find_latest_checkpoint(run_dir) → 최신 checkpoint 디렉토리 탐색
+    - load_trainer_state(json_path) → trainer_state.json에서 log history 로드
+    - log_to_dataframe(log_history) → pandas DataFrame으로 변환
+    - plot_metrics(df, output_dir) → step별 loss 및 validation metrics 시각화
+"""
+
 import os
 import json
 import glob
