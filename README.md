@@ -70,3 +70,11 @@ Topic_LDA/
 ├── stopwords.py           # TF-IDF 분석 기반으로 불용어 사전 구축하여 불용어 처리
 └── requirements.txt       # 환경 설정
 ```
+
+## 5. ~appendix
+바로가기: [Appendix](~appendix/README.md)
+## 프로젝트 구조
+```
+~appendix/
+└── conceptmap.ipynb      # 컨셉맵 구축을 위한 전처리 작업
+```
