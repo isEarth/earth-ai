@@ -6,6 +6,7 @@
 - **PyTorch 기반 학습 및 추론**
 - **Custom 차원 축소/확장 모듈 빠른 유사도 검색**
 - **절 경계 예측, 임베딩 생성, 유사 절쌍 탐색, 전처리까지 포함한 엔드투엔드 시스템**
+- **절 당 중요단어 추출 및 강조 (선택)**
 
 
 ## 프로젝트 플로우
@@ -43,6 +44,7 @@
 | Classifer         | custom TaggingModel   |
 | 토큰화            | `DebertaV2Tokenizer`, `Kiwi`  |
 | data 관리        | custom `ClauseDB class`     |
+| Parameter 관리    | `dataclass` 및 `config` |
 | 유사도 계산       | `cosine_similarity`, `TF-TDF`, `KMean`  |
 | 빠른 탐색         | 차원 축소 선탐색 후 정밀탐색  |
 | 시각화/진행상황    | `tqdm`, `matplotlib`         |
