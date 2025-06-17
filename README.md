@@ -76,5 +76,6 @@ Topic_LDA/
 ## 프로젝트 구조
 ```
 ~appendix/
+├── dicdata.ipynb         # 용어사전 중복 제거를 위한 전처리 작업
 └── conceptmap.ipynb      # 컨셉맵 구축을 위한 전처리 작업
 ```
