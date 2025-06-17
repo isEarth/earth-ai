@@ -40,10 +40,10 @@
 | Task               | Tool/Library                |
 |--------------------|-----------------------------|
 | Transformer 모델   | HuggingFace Transformers    |
-| 임베딩            |   KF-DeBERTa           |
+| 임베딩            |   `KF-DeBERTa`           |
 | Classifer         | custom `TaggingModel`   |
 | 토큰화            | `DebertaV2Tokenizer`, `Kiwi`  |
-| data 관리        | custom `ClauseDB class`     |
+| data 관리        | custom `ClauseDB`     |
 | Parameter 관리    | `dataclass` 및 `config` |
 | 유사도 계산       | `cosine_similarity`, `TF-TDF`, `KMean`  |
 | 빠른 탐색         | 차원 축소 선탐색 후 정밀탐색  |
