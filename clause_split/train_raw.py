@@ -12,6 +12,24 @@ from dataclasses import dataclass, field
 # Config
 @dataclass
 class Config:
+    """
+    학습에 필요한 설정 값을 저장하는 데이터 클래스입니다.
+
+    Attributes:
+        model (str): 사전 학습 모델 이름
+        dropout (float): 드롭아웃 비율
+        max_length (int): 최대 입력 길이
+        batch_size (int): 배치 크기
+        epochs (int): 총 학습 epoch 수
+        lr (float): 학습률
+        enable_scheduler (bool): 스케줄러 사용 여부
+        scheduler (str): 사용할 스케줄러 이름
+        gradient_accumulation_steps (int): 그래디언트 누적 스텝
+        adam_eps (float): AdamW 옵티마이저의 epsilon
+        freeze_encoder (bool): encoder 파라미터 고정 여부
+        tag_weight (list): 각 태그에 대한 loss 가중치
+        confidence_threshold (float): 예측 확신 임계값
+    """
     model: str = "kakaobank/kf-deberta-base"
     dropout: float = 0.5
     max_length: int = 128
@@ -27,6 +45,14 @@ class Config:
     confidence_threshold: float = 0.5
 @dataclass
 class LabelData:
+    """
+    레이블 및 인덱스 간 매핑 정보를 관리하는 클래스입니다.
+
+    Attributes:
+        labels (list): 레이블 목록 (예: ["O", "E", "E2", "E3"])
+        id2label (dict): 인덱스 → 레이블 매핑
+        label2id (dict): 레이블 → 인덱스 매핑
+    """
     labels: list = field(default_factory=lambda: ["O", "E", "E2", "E3"])
     id2label: dict = field(init=False)
     label2id: dict = field(init=False)
@@ -40,6 +66,15 @@ class Variables:
 
 # tokens -> sentence
 def recover_wordpieces(tokens: list) -> str :
+    """
+    WordPiece 토큰을 원래 단어 단위로 병합합니다.
+
+    Args:
+        tokens (list): WordPiece 토큰 리스트
+
+    Returns:
+        str: 병합된 자연어 문장
+    """
     words = []
     current_word = ''
     for token in tokens:
@@ -61,6 +96,15 @@ def recover_wordpieces(tokens: list) -> str :
 
 # open file
 def open_file(file_name):
+    """
+    BIO 라벨링된 텍스트 파일을 열고 토큰/라벨/전체 문장을 구성하여 DataFrame으로 반환합니다.
+
+    Args:
+        file_name (str): 입력 파일 경로
+
+    Returns:
+        pd.DataFrame: 'tokens', 'labels', 'full_text' 필드를 가진 DataFrame
+    """
     with open(file_name, 'r', encoding='utf-8-sig') as f:
         raw = f.read()
         result = []
@@ -91,6 +135,15 @@ def open_file(file_name):
 
 # Dataset
 class TokenTaggingDataset:
+    """
+    Token Classification을 위한 Dataset 클래스입니다.
+
+    Args:
+        df (pd.DataFrame): 토큰/라벨 정보를 포함한 데이터
+        config (Config): 설정 객체
+        tokenizer (Tokenizer): Huggingface tokenizer
+        max_len (int): 최대 길이
+    """
     def __init__(self, df, config, tokenizer, max_len):
         self.df = df
         self.tokenizer = tokenizer
@@ -147,6 +200,13 @@ class MeanPooling(nn.Module):
 
 # Model
 class TaggingModel(nn.Module):
+    """
+    DeBERTa 기반의 Token Classification 모델입니다.
+
+    Args:
+        config (Config): 설정 객체
+        num_classes (int): 예측 클래스 수
+    """
     def __init__(self, config, num_classes=4):
         super().__init__()
         self.encoder = DebertaV2Model.from_pretrained(config.model, output_hidden_states=True)
@@ -167,9 +227,18 @@ class TaggingModel(nn.Module):
         if out_last_hidden_state:
             result.append(out.last_hidden_state)
         return result if any((return_cls,out_last_hidden_state)) else logits
-    
+
 # Trainer
 class Trainer:
+    """
+    모델 학습 및 검증을 수행하는 Trainer 클래스입니다.
+
+    Args:
+        model (nn.Module): 학습 대상 모델
+        loaders (tuple): (train_loader, val_loader)
+        config (Config): 설정 객체
+        accelerator (Accelerator): Huggingface Accelerate를 활용한 학습 가속기
+    """
     def __init__(self, model, loaders, config, accelerator):
         self.model = model
         self.train_loader, self.val_loader = loaders
@@ -203,6 +272,12 @@ class Trainer:
         )
 
     def train_one_epoch(self, epoch):
+        """
+        하나의 epoch 동안 학습을 수행합니다.
+
+        Args:
+            epoch (int): 현재 epoch 번호
+        """
         self.model.train()
         running_loss = 0
         # for inputs, targets in tqdm(self.train_loader, desc=f"Train Epoch {epoch}"):
@@ -222,6 +297,12 @@ class Trainer:
 
     @torch.no_grad()
     def valid_one_epoch(self, epoch):
+        """
+        하나의 epoch 동안 검증을 수행합니다.
+
+        Args:
+            epoch (int): 현재 epoch 번호
+        """
         self.model.eval()
         running_loss = 0
         for inputs in tqdm(self.val_loader, desc=f"Valid Epoch {epoch}"):
@@ -247,6 +328,13 @@ class Trainer:
             torch.cuda.empty_cache()
 
 def main():
+    """
+    학습 전체 파이프라인을 실행합니다:
+    - 데이터 로드 및 전처리
+    - 모델 및 토크나이저 설정
+    - 학습/검증 분할
+    - Trainer를 통한 학습 수행
+    """
     config = Config()
     label_data = LabelData()
 
@@ -266,7 +354,7 @@ def main():
     val_ds = TokenTaggingDataset(val_df, config, tokenizer, max_len=config.max_length)
 
     # data load
-    train_loader = DataLoader(train_ds, batch_size=config.batch_size, shuffle=True) # num_workers=1 
+    train_loader = DataLoader(train_ds, batch_size=config.batch_size, shuffle=True) # num_workers=1
     val_loader = DataLoader(val_ds, batch_size=config.batch_size, shuffle=False) # num_workers=1
 
     # Train

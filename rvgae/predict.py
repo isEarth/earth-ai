@@ -5,6 +5,18 @@ import pandas as pd
 from model import RVGAE
 
 def predict():
+    """
+    RVGAE 모델을 학습하고 숨겨진 링크 및 관계 유형을 예측합니다.
+
+    1. 학습 데이터 로딩 (노드 임베딩, 엣지, 타입)
+    2. RVGAE 모델 정의 및 학습
+    3. 훈련되지 않은 노드쌍에 대해 링크 존재 확률 및 관계 타입 예측
+
+    Returns:
+        List[Tuple[int, int, float, int]]:
+            (source_index, target_index, link_score, relation_type)
+            형태의 예측 결과 리스트
+    """
     x = torch.tensor(np.load("/home/billgates/workspace/RVGAE/data/x.npy"), dtype=torch.float)
     pos_edge_index = torch.tensor(np.load("/home/billgates/workspace/RVGAE/data/edge_index.npy"), dtype=torch.long)
     # neg_edge_index = torch.tensor(np.load("/home/billgates/workspace/RVGAE/data/neg_edge_index.npy"), dtype=torch.long)
@@ -67,13 +79,13 @@ def predict():
         _, _, _, _, z = model(x, edge_index, edge_type, pos_edge_index)
 
         num_nodes = x.size(0)
-        pairs_a = [(i, j) for i in range(num_nodes) for j in range(num_nodes) if i != j] 
+        pairs_a = [(i, j) for i in range(num_nodes) for j in range(num_nodes) if i != j]
         pairs_b = [(j, i) for i in range(num_nodes) for j in range(num_nodes) if i != j]
         all_pairs = pairs_a + pairs_b
         gt_pairs = set(zip(edge_index[0].tolist(), edge_index[1].tolist()))
-        
+
         predict_pairs = [pair for pair in all_pairs if pair not in gt_pairs]
-        
+
         batch_size = 100000
         results = []
 
@@ -101,13 +113,13 @@ def predict():
     #     _, _, _, _, z = model(x, edge_index, edge_type, pos_edge_index)
 
     #     num_nodes = x.size(0)
-    #     pairs_a = [(i, j) for i in range(num_nodes) for j in range(num_nodes) if i != j] 
+    #     pairs_a = [(i, j) for i in range(num_nodes) for j in range(num_nodes) if i != j]
     #     pairs_b = [(j, i) for i in range(num_nodes) for j in range(num_nodes) if i != j]
     #     all_pairs = pairs_a + pairs_b
     #     gt_pairs = set(zip(edge_index[0].tolist(), edge_index[1].tolist()))
-        
+
     #     predict_pairs = [pair for pair in all_pairs if pair not in gt_pairs]
-        
+
     #     batch_size = 100000
     #     results = []
 

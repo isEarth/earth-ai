@@ -1,3 +1,38 @@
+"""
+causal_cls_trainer.py
+
+목적:
+    한국어 인과 문장 분류 모델을 Hugging Face Transformers와 Trainer API를 이용해 학습합니다.
+
+주요 기능:
+    - 최신 CSV 데이터 자동 로드 및 학습/검증 분리
+    - KF-DeBERTa 기반 이진 분류 모델 설정 및 학습
+    - 평가 지표(metrics) 계산: Accuracy, Precision, Recall, F1, ROC AUC
+    - 결과 시각화:
+        - 학습 및 평가 손실 그래프
+        - 혼동 행렬
+        - ROC 곡선
+    - 최고의 모델 자동 저장 (EarlyStopping 포함)
+
+구성 요소:
+    - `load_and_split_csv`: 최신 CSV를 불러와 학습/검증셋 생성
+    - `tokenize_fn`: 문장을 tokenizer로 변환
+    - `compute_metrics`: 커스텀 평가 지표 계산
+    - `plot_metrics`: 학습 곡선 시각화
+    - `plot_confusion`: 혼동 행렬 시각화
+    - `plot_roc_auc`: ROC 커브 시각화
+
+사용법:
+    - `python causal_cls_trainer.py`
+    - 기본적으로 `./data/` 디렉토리 내 최신 CSV를 학습 데이터로 사용합니다.
+
+출력 디렉토리:
+    - 학습 결과는 `./runs/run_YYYYMMDD_HHMMSS/` 에 저장되며 다음 항목을 포함합니다:
+        - `best_model/`: 최적 모델 가중치
+        - `training_loss.png`, `eval_f1.png`, `confusion_matrix.png`, `roc_curve.png` 등 시각화 결과
+
+"""
+
 import os
 import glob
 import random
@@ -53,7 +88,7 @@ model.to(device)
 # ——————————————————————————————————————————————————————
 def compute_metrics(pred):
     """
-    Trainer가 검증할 때 사용하는 함수로, 
+    Trainer가 검증할 때 사용하는 함수로,
     logits와 실제 레이블을 비교해 accuracy, precision, recall, f1 리턴
     """
     logits, labels = pred.predictions, pred.label_ids
@@ -90,7 +125,7 @@ def load_and_split_csv(directory, test_size=0.2, seed=42):
 def tokenize_fn(batch):
     """
     Hugging Face Dataset.map()에 넘기는 토크나이저 함수.
-    batch["sentence"] 리스트를 한 번에 토크나이즈해서 
+    batch["sentence"] 리스트를 한 번에 토크나이즈해서
     'input_ids', 'attention_mask' 등을 반환
     """
     return tokenizer(

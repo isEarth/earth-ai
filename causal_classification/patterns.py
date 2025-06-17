@@ -1,3 +1,26 @@
+"""
+causal_patterns.py
+
+한국어 문장에서 인과 관계(causal relationship)를 식별하기 위한 정규 표현식 패턴 리스트를 정의합니다.
+
+사용 목적:
+    - 텍스트 분석 및 문장 분류에서 인과적 단서(문장 연결 표현 또는 이유/결과 관련 어휘)를 탐지하기 위해 사용됩니다.
+    - 각 패턴은 문장 내 인과 연결 표현을 식별할 수 있도록 설계되었습니다.
+
+구성 요소:
+    1. `prefixes`: '이', '그', '저' 같은 한국어 지시사 접두어
+    2. `causal_phrases`: 조사 및 연결어미 중심의 인과 표현 리스트 (예: "러 니까", "런 고 로")
+    3. `causal_keywords`: 단독으로 인과관계를 나타낼 수 있는 단어 또는 구 (예: "왜냐하면", "따라서", "원인")
+    4. `CAUSAL_PATTERNS`: 위 요소들을 바탕으로 컴파일되지 않은 정규식 패턴 문자열 리스트
+
+예시 사용:
+    from causal_patterns import CAUSAL_PATTERNS
+    for p in CAUSAL_PATTERNS:
+        if re.search(p, sentence):
+            print("인과 표현 발견!")
+
+"""
+
 # causal_patterns.py
 
 import re
