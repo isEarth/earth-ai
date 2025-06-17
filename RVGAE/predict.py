@@ -1,7 +1,7 @@
 """
 [RVGAE 예측 파이프라인 설명]
 
-본 코드는 Heterogeneous grahp에서 노드 간 숨은 링크 및 타입을 예측하기 위해 학습 및 예측 파이프라인이다.
+본 코드는 Heterogeneous graph에서 노드 간 숨은 링크 및 타입을 예측하기 위해 학습 및 예측 파이프라인이다.
 
 주요 목표:
 - 고차원 임베딩 벡터를 기반으로 노드 간 링크 존재 여부 및 관계 유형(링크 타입)을 예측
@@ -50,7 +50,7 @@ def load_data(filenames: FileName, device: str) -> Tuple[torch.Tensor, torch.Ten
         device (str): 장치 이름 ('cuda' 또는 'cpu')
 
     Returns:
-        Tuple[Tensor, Tensor, Tensor]: x, edge_index, edge_type (GPU에 로드됨)
+        Tuple[Tensor, Tensor, Tensor]: x (N, F), edge_index (2, E), edge_type (E,)
     """
     x = torch.tensor(np.load(filenames.node_feature), dtype=torch.float)
     edge_index = torch.tensor(np.load(filenames.edge_index), dtype=torch.long)
@@ -63,8 +63,8 @@ def compute_class_weights(edge_type: torch.Tensor, num_relations: int, device: s
 
     Args:
         edge_type (Tensor): 각 엣지의 관계 타입 (E,)
-        num_relations (int): 관계 타입 개수
-        device (str): 장치 이름
+        num_relations (int): 관계 타입 수 (R)
+        device (str): 연산 대상 장치
 
     Returns:
         Tensor: 관계 타입별 정규화된 가중치 벡터 (R,)
@@ -84,7 +84,7 @@ def generate_negative_edges(x: torch.Tensor, pos_edge_index: torch.Tensor) -> to
         pos_edge_index (Tensor): 존재하는 양성 엣지 인덱스 (2, E)
 
     Returns:
-        Tensor: negative edge 인덱스 (2, E)
+        Tensor: 음성 엣지 인덱스 (2, E)
     """
     num_nodes = x.size(0)
     num_pos_edges = pos_edge_index.size(1)
@@ -103,9 +103,9 @@ def train(model: RVGAE, x: torch.Tensor, edge_index: torch.Tensor, edge_type: to
     Args:
         model (RVGAE): 학습할 모델
         x (Tensor): 노드 피처 (N, F)
-        edge_index (Tensor): 엣지 인덱스 (2, E)
-        edge_type (Tensor): 엣지 타입 (E,)
-        class_weights (Tensor): 클래스 가중치 (R,)
+        edge_index (Tensor): 전체 그래프 엣지 인덱스 (2, E)
+        edge_type (Tensor): 엣지 타입 벡터 (E,)
+        class_weights (Tensor): 관계 타입 가중치 (R,)
         config (Config): 학습 설정값
     """
     optimizer = torch.optim.Adam(model.parameters(), lr=config.lr)
@@ -137,14 +137,14 @@ def predict_links(model: RVGAE, x: torch.Tensor, edge_index: torch.Tensor, edge_
 
     Args:
         model (RVGAE): 학습 완료된 모델
-        x (Tensor): 노드 임베딩 입력 (N, F)
-        edge_index (Tensor): GT에 포함된 실제 엣지 인덱스 (2, E)
-        edge_type (Tensor): 엣지 관계 타입 (E,)
-        config (Config): 배치 사이즈 포함 학습 설정
-        threshold (float): 연결로 간주할 최소 확률값
+        x (Tensor): 노드 피처 (N, F)
+        edge_index (Tensor): 전체 그래프 엣지 인덱스 (2, E)
+        edge_type (Tensor): 엣지 관계 타입 벡터 (E,)
+        config (Config): 배치 사이즈 포함 설정
+        threshold (float): 링크로 판단할 최소 확률값
 
     Returns:
-        List[Tuple[int, int, float, int]]: [(source, target, score, predicted_relation)]
+        List[Tuple[int, int, float, int]]: (source, target, score, predicted_relation) 리스트
     """
     model.eval()
     with torch.no_grad():
