@@ -31,12 +31,12 @@
 ## 프로젝트 구조
 ```
 Causal_classification/
-├── cls_module.py        # 인과 관계 binary 분류 추론
-├── dataset.py           # 정규식 기반 데이터 라벨링 및 문장 분리 후 (sentence,label) 형식으로 csv 파일 생성
-├── train.py             # 학습 및 best model 저장, 성능평가 지표 저장
-├── evaluation.py        # 학습 중단 시 마지막 checkpoint 찾아서 성능평가 지표 저장
-├── patterns.py          # 데이터 라벨링을 위한 정규식 패턴 정의
-└── requirements.txt     # 환경 설정
+├── cls_module.py          # 인과 관계 binary 분류 추론
+├── dataset.py             # 정규식 기반 데이터 라벨링 및 문장 분리 후 (sentence,label) 형식으로 csv 파일 생성
+├── train.py               # 학습 및 best model 저장, 성능평가 지표 저장
+├── evaluation.py          # 학습 중단 시 마지막 checkpoint 찾아서 성능평가 지표 저장
+├── patterns.py            # 데이터 라벨링을 위한 정규식 패턴 정의
+└── requirements.txt       # 환경 설정
 ```
 <br />
 
@@ -60,10 +60,10 @@ clause_split/
 ## 프로젝트 구조
 ```
 RVGAE/
-├── data/                # Input 데이터
-├── model.py             # R-VGAE 모델 정의
-├── predict.py           # 링크 및 타입 예측 실행
-└── requirements.txt     # 환경 설정
+├── data/                  # Input 데이터
+├── model.py               # R-VGAE 모델 정의
+├── predict.py             # 링크 및 타입 예측 실행
+└── requirements.txt       # 환경 설정
 ```
 <br />
 
