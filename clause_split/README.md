@@ -34,13 +34,14 @@
 ## 실행 방법
 1. 환경 설정
 ```
-PyTorch
-transformers
-tqdm
-numpy
-scikit-learn
-kiwipiepy
-accelerate (선택)
+- python             3.9
+- torch              2.5.1
+- transformers       4.49.0
+- tqdm               4.67.1
+- numpy              2.0.1
+- scikit-learn       1.6.1 
+- kiwipiepy          0.21.0
+- accelerate         1.7.0
 ```
 2. 의존성 설치
 ```
