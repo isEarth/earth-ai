@@ -73,8 +73,8 @@ RVGAE/
 
 ## 모델 성능
 <p align="center">
-  <img src="loss_plot.png" width="400"/>
-  <img src="link_performance.png" width="400"/>
-  <img src="type_performance.png" width="400"/>
+  <img src="loss_plot.png" width="300"/>
+  <img src="link_performance.png" width="300"/>
+  <img src="type_performance.png" width="300"/>
 </p>
 
