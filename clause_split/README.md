@@ -25,7 +25,11 @@
 <br>
 
 <p align="center">
+
 ![alt text](image-2.png)
+</p>
+<p align="center">
+<img src="./image-3.png" width="500"/> 
 </p>
 
 ## 실행 방법
