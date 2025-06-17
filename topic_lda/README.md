@@ -33,7 +33,7 @@ YouTube 경제 뉴스 스크립트를 기반으로, LDA(Latent Dirichlet Allocat
 → 최종적으로 각 스크립트에 대해 확률 분포 기반으로 **주요 토픽 할당 → 이벤트 노드 생성**
 
 <p align="center">
-  <img src="assets/LDA_Flow.png" height="450" width="1000"/>
+  <img src="images/LDA_Flow.png" height="450" width="1000"/>
 </p>
 
 ## 토픽 수 결정 및 결과 해석
@@ -44,8 +44,8 @@ YouTube 경제 뉴스 스크립트를 기반으로, LDA(Latent Dirichlet Allocat
   스크립트별 토픽 분포를 바탕으로 향후 **개념 연결, 이벤트 그래프 구축**에 활용될 수 있습니다.
 
 <p align="center">
-  <img src="assets/per_2293.png" width="500"/>
-  <img src="assets/coh_2293.png" width="500"/>
+  <img src="images/per_2293.png" width="500"/>
+  <img src="images/coh_2293.png" width="500"/>
 </p>
 
 ## 실행 방법
@@ -69,7 +69,7 @@ python main.py
 ## 프로젝트 구조
 ```
 Topic_LDA/
-├── assets/                # 데이터
+├── images/                # 이미지
 ├── CustomTokenizer.py     # 명사 단위 토크나이저
 ├── lda_modeling.py        # 명사로만 이루어진 스크립트와 불용어 사전, 카운터 벡터를 전달받아 LDA 토픽 모델링 진행
 ├── main.py                # 전처리부터 LDA 토픽 모델링, 저장까지 관리
