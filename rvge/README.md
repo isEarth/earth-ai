@@ -71,14 +71,10 @@ RVGAE/
 └── requirements.txt     # 환경 설정
 ```
 
-## 성능 및 결과
-
-`predict.py`를 실행하면 모델은 숨은 링크와 그 관계 유형을 예측합니다.  
-다음과 같은 형식의 결과가 반환됩니다:    
-
+## 모델 성능
 <p align="center">
-  <img src="![loss_plot](https://github.com/user-attachments/assets/96b6e060-f679-4ba5-95c5-4d06ac0af45f)" width="400"/>
-  <img src="![link_performance](https://github.com/user-attachments/assets/7619ee11-a8f7-454d-8bdb-06424474567c)" width="400"/>
-  <img src="![type_performance](https://github.com/user-attachments/assets/bc36bd8b-450c-449b-b707-f76fdd33df44)" width="400"/>
+  <img src="loss_plot.png" width="400"/>
+  <img src="link_performance.png" width="400"/>
+  <img src="type_performance.png" width="400"/>
 </p>
 
