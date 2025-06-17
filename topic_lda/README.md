@@ -33,7 +33,7 @@ YouTube 경제 뉴스 스크립트를 기반으로, LDA(Latent Dirichlet Allocat
 → 최종적으로 각 스크립트에 대해 확률 분포 기반으로 **주요 토픽 할당 → 이벤트 노드 생성**
 
 <p align="center">
-  <img src="assets/LDA_Flow.png" width="600"/>
+  <img src="assets/LDA_Flow.png" width="1000"/>
 </p>
 
 ## 토픽 수 결정 및 결과 해석
@@ -44,8 +44,8 @@ YouTube 경제 뉴스 스크립트를 기반으로, LDA(Latent Dirichlet Allocat
   스크립트별 토픽 분포를 바탕으로 향후 **개념 연결, 이벤트 그래프 구축**에 활용될 수 있습니다.
 
 <p align="center">
-  <img src="assets/per_2293.png" width="400"/>
-  <img src="assets/coh_2293.png" width="400"/>
+  <img src="assets/per_2293.png" width="500"/>
+  <img src="assets/coh_2293.png" width="500"/>
 </p>
 
 ## 실행 방법
