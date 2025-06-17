@@ -36,17 +36,10 @@
 
 ## 주요 기술 스택
 
-| Task               | Tool/Library                |
-|--------------------|-----------------------------|
-| Transformer 모델   | HuggingFace Transformers    |
-| 임베딩            | `KF-DeBERTa`                |
-| Classifier         | custom `TaggingModel`       |
-| 토큰화            | `DebertaV2Tokenizer`, `Kiwi`|
-| data 관리         | custom `ClauseDB`           |
-| Parameter 관리    | `dataclass`, `config`       |
-| 유사도 계산       | `cosine_similarity`, `TF-IDF`, `KMean`  |
-| 빠른 탐색         | 차원 축소 선탐색 후 정밀탐색 |
-| 시각화/진행상황    | `tqdm`, `matplotlib`         |
+<p align="center">
+  <img src="images/image-0.png" width="300"/>
+  <img src="images/image-1.png" width="300"/>
+</p>
 
 ## 실행 방법
 1. 환경 설정
