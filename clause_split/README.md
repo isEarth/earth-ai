@@ -88,7 +88,7 @@ python test.py --input similar_temp.npy
 ## 프로젝트 구조
 ```
 clause_split/
-├── images/               # 이미지
+├── images/              # 이미지
 ├── train.py             # 문장 분류기 학습
 ├── prediction.py        # 문장을 절 단위로 분리
 ├── decide_same.py       # 유사 절쌍 탐색 및 정밀 유사도 계산
