@@ -1,3 +1,25 @@
+"""
+main.py
+
+YouTube 스크립트 텍스트 파일로부터 LDA 기반 토픽 모델링을 수행하는 전체 파이프라인 스크립트.
+
+1. 전처리:
+    - 파일 불러오기 → 줄 단위 병합 → 공백/숫자 제거 → 명사 추출
+2. TF-IDF 분석:
+    - 중요도가 낮은 단어를 불용어 후보로 선정
+3. 사전 및 코퍼스 생성:
+    - 불용어 제거 후 Dictionary 및 BoW 벡터 생성
+4. LDA 모델 학습:
+    - Gensim 기반 모델 학습 및 저장
+5. 결과 저장:
+    - 토픽별 주요 단어 5개씩 CSV로 저장
+
+의존 모듈:
+    - preprocess.py: 텍스트 로딩 및 정제
+    - stopwords.py: TF-IDF 기반 불용어 추출
+    - lda_modeling.py: Dictionary, LDA 모델, CSV 저장
+"""
+
 from preprocess import *
 from stopwords import *
 from lda_modeling import *
