@@ -24,6 +24,8 @@
 <br />
 <br />
 
+# 지구다 AI R&D Result
+
 ## 1. causal_classification
 바로가기: [causal_classificaton](causal_classification/README.md)
 ## 프로젝트 구조
