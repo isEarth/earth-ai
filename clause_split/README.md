@@ -28,10 +28,10 @@
 
 <p align="center">
 
-![alt text](image-2.png)
+![alt text](images/image-2.png)
 </p>
 <p align="center">
-<img src="./image-3.png" width="500"/> 
+<img src="images/image-3.png" width="500"/> 
 </p>
 
 ---
@@ -57,37 +57,7 @@
 - python 3.9
 - torch 2.5.1
 - transformers 4.49.0
-- tqdm 4.67.1
-- numpy 2.0.1
-- scikit-learn 1.6.1 
-- kiwipiepy 0.21.0
-- accelerate 1.7.0
-```
-2. 의존성 설치
-```
-pip install -r requirements.txt
-```
-3. 절 분할 모델 학습
-```
-python train.py --config configs/kf_deberta.yaml
-```
-4. 절 단위 예측
-```
-python prediction.py --input input_text.txt --output predicted_clauses.jsonl
-```
-5. 유사 절쌍 탐색
-```
-python decide_same.py --input predicted_clauses.jsonl --output similar_temp.npy
-```
-6. 결과 검증
-```
-python test.py --input similar_temp.npy
-```
-
-## 프로젝트 구조
-
-```
-clause_split/
+- tqdm 4.67.지
 ├── train.py               # 문장 분류기 학습
 ├── prediction.py          # 문장을 절 단위로 분리
 ├── decide_same.py         # 유사 절쌍 탐색 및 정밀 유사도 계산
