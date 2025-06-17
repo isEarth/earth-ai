@@ -41,7 +41,7 @@
 |--------------------|-----------------------------|
 | Transformer 모델   | HuggingFace Transformers    |
 | 임베딩            |   KF-DeBERTa           |
-| Classifer         | custom TaggingModel   |
+| Classifer         | custom `TaggingModel`   |
 | 토큰화            | `DebertaV2Tokenizer`, `Kiwi`  |
 | data 관리        | custom `ClauseDB class`     |
 | Parameter 관리    | `dataclass` 및 `config` |
