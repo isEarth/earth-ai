@@ -38,7 +38,7 @@
 
 <p align="center">
   <img src="images/image-0.png" width="400"/>
-  <img src="images/image-4.png" height="400" width="400"/>
+  <img src="images/image-4.png" height="600" width="400"/>
 </p>
 
 ## 실행 방법
