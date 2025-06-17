@@ -31,6 +31,7 @@
 <img src="./image-3.png" width="500"/> 
 </p>
 
+---
 ## 주요 기술 스택
 
 | Task               | Tool/Library                |
