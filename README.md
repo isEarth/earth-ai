@@ -42,6 +42,16 @@ Causal_classification/
 
 ## 2. clause_split
 바로가기: [clause_split](clause_split/README.md)
+## 프로젝트 구조
+```
+clause_split/
+├── image/                 # 이미지
+├── train.py               # 문장 분류기 학습
+├── prediction.py          # 문장을 절 단위로 분리
+├── decide_same.py         # 유사 절쌍 탐색 및 정밀 유사도 계산
+├── test.py                # 전체 파이프라인 검증
+└── requirements.txt       # 환경 설정
+```
 
 <br />
 
