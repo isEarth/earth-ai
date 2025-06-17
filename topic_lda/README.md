@@ -69,11 +69,11 @@ python main.py
 ## 프로젝트 구조
 ```
 Topic_LDA/
-├── images/                # 이미지
-├── CustomTokenizer.py     # 명사 단위 토크나이저
-├── lda_modeling.py        # 명사로만 이루어진 스크립트와 불용어 사전, 카운터 벡터를 전달받아 LDA 토픽 모델링 진행
-├── main.py                # 전처리부터 LDA 토픽 모델링, 저장까지 관리
-├── preprocess.py          # 스크립트 txt 파일들을 불러와 전처리
-├── stopwords.py           # TF-IDF 분석 기반으로 불용어 사전 구축하여 불용어 처리
-└── requirements.txt       # 환경 설정
+├── images/                  # 이미지
+├── CustomTokenizer.py       # 명사 단위 토크나이저
+├── lda_modeling.py          # 명사로만 이루어진 스크립트와 불용어 사전, 카운터 벡터를 전달받아 LDA 토픽 모델링 진행
+├── main.py                  # 전처리부터 LDA 토픽 모델링, 저장까지 관리
+├── preprocess.py            # 스크립트 txt 파일들을 불러와 전처리
+├── stopwords.py             # TF-IDF 분석 기반으로 불용어 사전 구축하여 불용어 처리
+└── requirements.txt         # 환경 설정
 ```
