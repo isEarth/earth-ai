@@ -42,7 +42,7 @@
 | Transformer 모델   | HuggingFace Transformers    |
 | 임베딩            |   `KF-DeBERTa`           |
 | Classifer         | custom `TaggingModel`   |
-| 토큰화            | `DebertaV2Tokenizer`, `Kiwi`  |                          
+| 토큰화            | `DebertaV2Tokenizer`, `Kiwi`  |                          <p align="right"><img src="images/image-1.png" width="500"/> </p>
 | data 관리        | custom `ClauseDB`     |
 | Parameter 관리    | `dataclass` 및 `config` |
 | 유사도 계산       | `cosine_similarity`, `TF-TDF`, `KMean`  |
