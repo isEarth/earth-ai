@@ -34,50 +34,19 @@
 <img src="images/image-3.png" width="500"/> 
 </p>
 
-<br>
-<div style="display: flex; gap: 40px; justify-content: space-between;">
+## 주요 기술 스택
 
-  <!-- 기술 스택 표 -->
-  <div>
-    <h3>주요 기술 스택</h3>
-    <table border="1" cellspacing="0" cellpadding="5">
-      <tr><th>Task</th><th>Tool/Library</th></tr>
-      <tr><td>Classifier</td><td><code>TaggingModel</code></td></tr>
-      <tr><td>토큰화</td><td><code>DebertaV2Tokenizer</code>, <code>Kiwi</code></td></tr>
-      <tr><td>data 관리</td><td><code>ClauseDB</code></td></tr>
-      <tr><td>Parameter 관리</td><td><code>dataclass</code>, <code>config</code></td></tr>
-      <tr><td>유사도 계산</td><td><code>cosine_similarity</code>, <code>TF-IDF</code>, <code>KMean</code></td></tr>
-      <tr><td>빠른 탐색</td><td>차원 축소 후 정밀탐색</td></tr>
-      <tr><td>시각화</td><td><code>tqdm</code>, <code>matplotlib</code></td></tr>
-    </table>
-  </div>
-
-  <!-- 하이퍼파라미터 표 -->
-  <div>
-    <h3>Hyperparameter</h3>
-    <table border="1" cellspacing="0" cellpadding="5">
-      <tr><td>epochs</td><td>50</td></tr>
-      <tr><td>learning rate</td><td>3e-4</td></tr>
-      <tr><td>batch size</td><td>1</td></tr>
-      <tr><td>max length</td><td>128</td></tr>
-      <tr><td>drop out</td><td>0.5</td></tr>
-      <tr><td>confidence</td><td>0.5</td></tr>
-    </table>
-  </div>
-
-  <!-- 태그 타입/가중치 표 -->
-  <div>
-    <h3>Tag Type & Weight</h3>
-    <table border="1" cellspacing="0" cellpadding="5">
-      <tr><th>Tag Type</th><th>Tag Weight</th></tr>
-      <tr><td>O (Nothing)</td><td>0.1</td></tr>
-      <tr><td>E (End)</td><td>1.0</td></tr>
-      <tr><td>I (InnerEnd)</td><td>1.2</td></tr>
-      <tr><td>C (Condition)</td><td>1.2</td></tr>
-    </table>
-  </div>
-
-</div>
+| Task               | Tool/Library                |
+|--------------------|-----------------------------|
+| Transformer 모델   | HuggingFace Transformers    |
+| 임베딩            | `KF-DeBERTa`                |
+| Classifier         | custom `TaggingModel`       |
+| 토큰화            | `DebertaV2Tokenizer`, `Kiwi`|
+| data 관리         | custom `ClauseDB`           |
+| Parameter 관리    | `dataclass`, `config`       |
+| 유사도 계산       | `cosine_similarity`, `TF-IDF`, `KMean`  |
+| 빠른 탐색         | 차원 축소 선탐색 후 정밀탐색 |
+| 시각화/진행상황    | `tqdm`, `matplotlib`         |
 
 ## 실행 방법
 1. 환경 설정
