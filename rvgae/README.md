@@ -62,7 +62,7 @@ python predict.py
 모델은 **하나의 고정된 그래프**를 입력으로 사용합니다. 다음과 같은 `.npy` 배열로 구성됩니다:
 
 ```
-RVGAE/data/
+data/
 ├── x.npy # 각 노드의 임베딩 특성 (shape: [num_nodes, feat_dim])
 ├── edge_index.npy # 노드 간 연결 정보 (shape: [2, num_edges])
 └── edge_type.npy # 각 연결의 관계 유형 정보 (shape: [num_edges])
