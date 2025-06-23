@@ -57,10 +57,10 @@ clause_split/
 <br />
 
 ## 3. R-VGAE
-바로가기: [R-VGAE](rvge/README.md)
+바로가기: [r-vgae](rvge/README.md)
 ## 프로젝트 구조
 ```
-RVGAE/
+rvgae/
 ├── images/                # 이미지
 ├── model.py               # R-VGAE 모델 정의
 ├── predict.py             # 링크 및 타입 예측 실행
