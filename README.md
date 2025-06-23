@@ -30,7 +30,7 @@
 바로가기: [causal_classificaton](causal_classification/README.md)
 ## 프로젝트 구조
 ```
-Causal_classification/
+causal_classification/
 ├── images/                # 이미지
 ├── cls_module.py          # 인과 관계 binary 분류 추론
 ├── dataset.py             # 정규식 기반 데이터 라벨링 및 문장 분리 후 (sentence,label) 형식으로 csv 파일 생성
@@ -72,7 +72,7 @@ RVGAE/
 바로가기: [topic_lda](topic_lda/README.md)
 ## 프로젝트 구조
 ```
-Topic_LDA/
+topic_lda/
 ├── images/                # 이미지
 ├── CustomTokenizer.py     # 명사 단위 토크나이저
 ├── lda_modeling.py        # 명사로만 이루어진 스크립트와 불용어 사전, 카운터 벡터를 전달받아 LDA 토픽 모델링 진행
