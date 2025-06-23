@@ -57,7 +57,7 @@ clause_split/
 <br />
 
 ## 3. R-VGAE
-바로가기: [r-vgae](rvge/README.md)
+바로가기: [r-vgae](rvgae/README.md)
 ## 프로젝트 구조
 ```
 rvgae/
